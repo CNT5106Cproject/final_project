@@ -68,10 +68,10 @@ Generate log file in the correct peer, logging the interactions in the network
 
 
 #### **_2. Message Transmission (8 types of message)_**
-- Sending peice infos
+- Sending piece infos
 - Pick neighbors
 - requesting files
-- upload peices files
+- upload pieces files
 
 Actual messages packet -
 
@@ -81,12 +81,12 @@ Actual messages packet -
 
 messages type description -
 - **_bitfield_** - recieve target chunk infos
-- **_have_** - owned the peice
+- **_have_** - owned the piece
 - **_interested & not interested_** - yearn to receive missing chunk or not
 - [Todo] **_choke & unchoke_** - decide the number of concurrent upload connections.
 - [Todo] **_request & piece_**  
   - request - requesting a piece that the sender does the contain to unchoked neighbor
-  - piece - reciever return a peice with the chunk data
+  - piece - reciever return a piece with the chunk data
 
 
 - | message type  | value |
