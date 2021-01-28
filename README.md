@@ -84,9 +84,9 @@ messages type description -
 - **_have_** - owned the peice
 - **_interested & not interested_** - yearn to receive missing chunk or not
 - [Todo] **_choke & unchoke_** - decide the number of concurrent upload connections.
-- [Todo] **_request & peice_**  
+- [Todo] **_request & piece_**  
   - request - requesting a piece that the sender does the contain to unchoked neighbor
-  - peice - reciever return a peice with the chunk data
+  - piece - reciever return a peice with the chunk data
 
 
 - | message type  | value |
