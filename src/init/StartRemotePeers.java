@@ -19,14 +19,26 @@ import java.util.*;
 public class StartRemotePeers {
 
 	public Vector<RemotePeerInfo> peerInfoVector;
-	
-	public void getConfiguration()
+	public boolean debug = false;
+	public void getConfiguration(boolean debug, String fileDirectory)
 	{
 		String st;
 		int i1;
+		String peerFilePath = "PeerInfo.cfg";
+		String commonFilePath = "PeerInfo.cfg";
+		if(fileDirectory) {
+			peerFilePath = fileDirectory + peerFilePath;
+			commonFilePath = fileDirectory + commonFilePath;
+		}
+
+		if(debug) {
+			peerFilePath = "../test/" + peerFilePath;
+			commonFilePath = "../test/" + commonFilePath;
+		}
+
 		peerInfoVector = new Vector<RemotePeerInfo>();
 		try {
-			BufferedReader in = new BufferedReader(new FileReader("PeerInfo.cfg"));
+			BufferedReader in = new BufferedReader(new FileReader(peerFilePath));
 			while((st = in.readLine()) != null) {
 				
 				 String[] tokens = st.split("\\s+");
@@ -54,25 +66,28 @@ public class StartRemotePeers {
 		// TODO Auto-generated method stub
 		try {
 			StartRemotePeers myStart = new StartRemotePeers();
-			myStart.getConfiguration();
+			if(args[0] == "debug") {
+				debug = true;
+			}
+			myStart.getConfiguration(debug);
 					
-			// get current path
-			String path = System.getProperty("user.dir");
+			// // get current path
+			// String path = System.getProperty("user.dir");
 			
-			// start clients at remote hosts
-			for (int i = 0; i < myStart.peerInfoVector.size(); i++) {
-				RemotePeerInfo pInfo = (RemotePeerInfo) myStart.peerInfoVector.elementAt(i);
+			// // start clients at remote hosts
+			// for (int i = 0; i < myStart.peerInfoVector.size(); i++) {
+			// 	RemotePeerInfo pInfo = (RemotePeerInfo) myStart.peerInfoVector.elementAt(i);
 				
-				System.out.println("Start remote peer " + pInfo.peerId +  " at " + pInfo.peerAddress );
+			// 	System.out.println("Start remote peer " + pInfo.peerId +  " at " + pInfo.peerAddress );
 				
-				// *********************** IMPORTANT *************************** //
-				// If your program is JAVA, use this line.
-				Runtime.getRuntime().exec("ssh " + pInfo.peerAddress + " cd " + path + "; java peerProcess " + pInfo.peerId);
+			// 	// *********************** IMPORTANT *************************** //
+			// 	// If your program is JAVA, use this line.
+			// 	Runtime.getRuntime().exec("ssh " + pInfo.peerAddress + " cd " + path + "; java peerProcess " + pInfo.peerId);
 				
-				// If your program is C/C++, use this line instead of the above line. 
-				//Runtime.getRuntime().exec("ssh " + pInfo.peerAddress + " cd " + path + "; ./peerProcess " + pInfo.peerId);
-			}		
-			System.out.println("Starting all remote peers has done." );
+			// 	// If your program is C/C++, use this line instead of the above line. 
+			// 	//Runtime.getRuntime().exec("ssh " + pInfo.peerAddress + " cd " + path + "; ./peerProcess " + pInfo.peerId);
+			// }		
+			// System.out.println("Starting all remote peers has done." );
 
 		}
 		catch (Exception ex) {
