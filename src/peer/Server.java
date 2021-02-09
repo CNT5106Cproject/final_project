@@ -1,3 +1,5 @@
+package peer;
+
 import java.net.*;
 import java.io.*;
 import java.nio.*;
@@ -6,9 +8,12 @@ import java.util.*;
 
 public class Server {
 
-	private static final int sPort = 8000;   //The server will be listening on this port number
+	private static int sPort = 5566;   //The server will be listening on this port number
 
-	public static void main(String[] args) throws Exception {
+	public static void setPort(int port) {
+		sPort = port;
+	}
+	public static void start() throws Exception {
 		System.out.println("The server is running."); 
     ServerSocket listener = new ServerSocket(sPort);
 		int clientNum = 1;
