@@ -6,12 +6,13 @@ public class CustomExceptions extends Exception {
   * Create a custom exception message wrapper
   */
   private static final long serialVersionUID = 1L;
+  private static boolean debug = true;
 
-  public CustomExceptions(String message, String code) {
-    super(errorResponse(message, code));
+  public static String errorResponse(int code, String message) {
+    return "Error Code: " + code + ", Error Msg: " + message;
   }
 
-  private static String errorResponse(String message, String code) {
-    return "Error Msg: " + message + ", Error Code: " + code;
+  public CustomExceptions(int code, String message) {
+    super(errorResponse(code, message));
   }
 }
