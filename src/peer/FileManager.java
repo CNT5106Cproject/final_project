@@ -51,6 +51,14 @@ public class FileManager {
 		}
 		return ret;
 	}
+	public void close(){
+		try{
+			this.file.close();
+		}
+		catch(IOException e){
+			System.err.println("FileManager close failed");
+		}
+	}
 	public static void main(String args[])
 	{
 		FileManager client = new FileManager("XZY",124,10);
@@ -58,5 +66,6 @@ public class FileManager {
 		client.write("21".getBytes(),16,2);
 		System.out.println(client.blockNum);
 		System.out.println(client.lastBlockSize);
+		client.close();
 	}
 }
