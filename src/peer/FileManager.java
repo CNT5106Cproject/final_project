@@ -39,7 +39,8 @@ public class FileManager {
 		this.lock.lock();
 		int ret = len;
 		try{
-			this.file.write(b, off, len);
+			this.file.seek(off);
+			this.file.write(b, 0, len);
 		}	
 		catch(IOException | NullPointerException | IndexOutOfBoundsException e){
 			System.err.println("FileManager write failed");
@@ -54,7 +55,7 @@ public class FileManager {
 	{
 		FileManager client = new FileManager("XZY",124,10);
 
-		client.write("21".getBytes(),0,2);
+		client.write("21".getBytes(),16,2);
 		System.out.println(client.blockNum);
 		System.out.println(client.lastBlockSize);
 	}
