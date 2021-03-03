@@ -15,18 +15,22 @@
 7.Logging (YiMing)
 
 ## 7. Logging
+- Please naming the functions with this rule
+  ```
+    log{Actions}
+  ```
 - Typically, define a action function for the system in order to match the project description.
   For example, when 
   ```
-     LogHandler logging = new LogHandler();
-     logging.startConnect(client, host);
+    LogHandler logging = new LogHandler();
+    logging.logStartConnect(client, host);
 
-     // Log - "Peer [%s] makes a connection to Peer [%s]"
+    // Log - "Peer [%s] makes a connection to Peer [%s]"
   ```
   This will write down string with info lvl in the defined log file.
 
 - Use custom write log function to write test log.
   ```
-     LogHandler logging = new LogHandler();
+    LogHandler logging = new LogHandler();
     logging.writeLog("This is a test log");
   ```
