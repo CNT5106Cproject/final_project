@@ -2,16 +2,13 @@ package utils;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.logging.Level;
-import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.Date;
 import java.util.logging.FileHandler;
 import java.util.logging.Filter;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 
 import peer.Peer;
@@ -28,8 +25,8 @@ public class LogHandler {
   private static Logger logger = null;
   static {
     /*
-     * Set java logging file handler msg format, java default is XML format
-     */
+    * Set java logging file handler msg format, java default is XML format
+    */
     System.setProperty(
       "java.util.logging.SimpleFormatter.format",
       "[%1$tF %1$tT] [%4$s] [%3$s] %5$s %n"
@@ -48,11 +45,11 @@ public class LogHandler {
         return record.getLevel().intValue() >= upper.intValue();
     }
   }
+
   /**
   * Create log files for peer
   */
   private void createLogFiles() {
-    
     File isDir = new File(this.logDir);
     if (!isDir.exists()){
       isDir.mkdir();
@@ -93,11 +90,12 @@ public class LogHandler {
   }
 
   /**
-  * Custom msg
+  * Custom Messages
   */
   public void writeLog(String msg) {
     logger.info(msg);
   }
+
   public void writeLog(String msg, String lvl) {
     if(lvl == "severe") {
       logger.severe(msg);
@@ -108,14 +106,14 @@ public class LogHandler {
   }
   
   /**
-  * System infos
+  * System Actions
   */
-  public void establishPeer(Peer host) {
+  public void logEstablishPeer(Peer host) {
     String msg = String.format("Peer [%s] start establishing", host.getId());
     logger.info(msg);
   }
 
-  public void startServer(Peer host) {
+  public void logStartServer(Peer host) {
     String msg = String.format("Peer [%s] start server thread", host.getId());
     logger.info(msg);
   }
@@ -123,7 +121,7 @@ public class LogHandler {
   /**
   * Peer actions
   */
-  public void startConnect(Peer host, Peer client) {
+  public void logStartConnect(Peer host, Peer client) {
     String msg = String.format("Peer [%s] makes a connection to Peer [%s]", client.getId(), host.getId());
     logger.info(msg);
   }
