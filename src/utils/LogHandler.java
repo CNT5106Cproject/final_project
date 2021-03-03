@@ -123,8 +123,9 @@ public class LogHandler {
   /**
   * Peer actions
   */
-  public void Connect(Peer host, Peer client) {
-    // return String.format("Peer [peer_ID 1] makes a connection to Peer [peer_ID 2]");
+  public void startConnect(Peer host, Peer client) {
+    String msg = String.format("Peer [%s] makes a connection to Peer [%s]", client.getId(), host.getId());
+    logger.info(msg);
   }
   
 }
