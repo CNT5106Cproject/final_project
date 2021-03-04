@@ -20,13 +20,12 @@ public class PeerProcess {
 	 * 
 	 * @debug = true -> read peer info's with host is local
 	 */
-	private static SystemInfo readPeerInfo(String hostPeerId, boolean debug) {
+	private static void readPeerInfo(String hostPeerId, boolean debug) {
 		String fileName = peerInfoFN;
 		String cfgDir = "../config/";
 
 		Peer hostPeer = null;
 		List<Peer> peerList = new ArrayList<Peer>();
-		SystemInfo s = null;
 
 		if (debug) {
 			fileName = localPeerInfoFN;
@@ -50,13 +49,15 @@ public class PeerProcess {
 			}
 			fileReader.close();
 
-			s = new SystemInfo(hostPeer, peerList);
+			SystemInfo s = new SystemInfo(hostPeer, peerList);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		return s;
 	}
 
+	private static void readCommon() {
+
+	}
 	/**
 	 * Main Process of the Peer
 	 */
@@ -67,7 +68,8 @@ public class PeerProcess {
 				throw new CustomExceptions(ErrorCode.invalidArgumentLength, "Missing Peer Id");
 			}
 			/* Load peer infos */
-			SystemInfo s = readPeerInfo(args[0], true);
+			readPeerInfo(args[0], true);
+			SystemInfo s = utils.SystemInfo.getInstance();
 			Peer hostPeer = s.getHostPeer();
 			/* Set peer logger */
 			LogHandler logging = new LogHandler(hostPeer);

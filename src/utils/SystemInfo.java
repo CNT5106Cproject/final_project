@@ -9,6 +9,7 @@ import peer.Peer;
  */
 public final class SystemInfo {
   
+  private static SystemInfo instance = null;
   private Peer host;
   private List<Peer> peerList = new ArrayList<Peer>();
   private int preferN;
@@ -18,9 +19,11 @@ public final class SystemInfo {
   private int filePieceSize;
   
   public SystemInfo() {}
+  
   public SystemInfo(Peer host, List<Peer> peerList) {
-    this.host = host;
-    this.peerList = peerList;
+    instance = new SystemInfo();
+    instance.setHostPeer(host);
+    instance.setPeerList(peerList);
   }
 
   public SystemInfo(String[] SystemInfoList) {
@@ -45,6 +48,25 @@ public final class SystemInfo {
     catch(Exception e) {
       e.printStackTrace();
     }
+  }
+
+  public static SystemInfo getInstance() {
+    if (instance == null) {
+      synchronized (SystemInfo.class) {
+        if (instance == null) {
+          instance = new SystemInfo();
+        }
+      }
+    }
+    return instance;
+  }
+
+  public void setHostPeer(Peer host) {
+    this.host = host;
+  }
+
+  public void setPeerList(List<Peer> peerList) {
+    this.peerList = peerList;
   }
 
   public Peer getHostPeer() {
