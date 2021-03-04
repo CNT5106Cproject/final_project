@@ -106,6 +106,24 @@ public final class LogHandler {
   }
   
   /**
+   * 
+   *
+   */
+  public void logSystemParam() {
+    SystemInfo s = SystemInfo.getInstance();
+    String msg = String.format(
+      "System Params: PreferN [%s], UnChokingInr [%s], OptUnChokingInr [%s], FileName [%s], FileSize [%s], PieceSize [%s]", 
+      s.getPreferN(),
+      s.getUnChokingInr(),
+      s.getOptUnChokingInr(),
+      s.getTargetFileName(),
+      s.getTargetFileSize(),
+      s.getFilePieceSize()
+    );
+    logger.info(msg);
+  }
+
+  /**
   * System Actions
   */
   public void logEstablishPeer(Peer host) {

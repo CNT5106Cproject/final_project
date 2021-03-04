@@ -13,9 +13,10 @@ public final class SystemInfo {
   private Peer host;
   private List<Peer> peerList = new ArrayList<Peer>();
   private int preferN;
-  private int unChokingInterval;
+  private int unChokingInr;
+  private int optUnchokingInr;
   private String targetFileName;
-  private String targetFileSize;
+  private int targetFileSize;
   private int filePieceSize;
   
   public SystemInfo() {}
@@ -26,7 +27,7 @@ public final class SystemInfo {
     instance.setPeerList(peerList);
   }
 
-  public SystemInfo(String[] SystemInfoList) {
+  public SystemInfo(List<String> SystemInfoList) {
     /**
     * Read and store the system infos, written in Common.cfg by sequences.
     *
@@ -37,17 +38,7 @@ public final class SystemInfo {
     * FileSize 2167705
     * PieceSize 16384
     */
-
-    try {
-      this.preferN = Integer.parseInt(SystemInfoList[0]);
-      this.unChokingInterval = Integer.parseInt(SystemInfoList[1]);
-      this.targetFileName = SystemInfoList[2];
-      this.targetFileSize = SystemInfoList[3];
-      this.filePieceSize = Integer.parseInt(SystemInfoList[4]);
-    }
-    catch(Exception e) {
-      e.printStackTrace();
-    }
+    instance.setSystemParam(SystemInfoList);
   }
 
   public static SystemInfo getInstance() {
@@ -69,11 +60,55 @@ public final class SystemInfo {
     this.peerList = peerList;
   }
 
+  public void setSystemParam(List<String> SystemInfoList) {
+    try {
+      this.preferN = Integer.parseInt(SystemInfoList.get(0));
+      this.unChokingInr = Integer.parseInt(SystemInfoList.get(1));
+      this.optUnchokingInr = Integer.parseInt(SystemInfoList.get(2));
+      this.targetFileName = SystemInfoList.get(3);
+      this.targetFileSize = Integer.parseInt(SystemInfoList.get(4));
+      this.filePieceSize = Integer.parseInt(SystemInfoList.get(5));
+    }
+    catch(Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  /**
+  * Get peer infos
+  */
   public Peer getHostPeer() {
     return this.host;
   }
 
   public List<Peer> getPeerList() {
     return this.peerList;
+  }
+
+  /**
+  * Get System Infos
+  */
+  public int getPreferN() {
+    return this.preferN;
+  }
+
+  public int getUnChokingInr() {
+    return this.unChokingInr;
+  }
+
+  public int getOptUnChokingInr() {
+    return this.optUnchokingInr;
+  }
+
+  public String getTargetFileName() {
+    return this.targetFileName;
+  }
+
+  public int getTargetFileSize() {
+    return this.targetFileSize;
+  }
+
+  public int getFilePieceSize() {
+    return this.filePieceSize;
   }
 }

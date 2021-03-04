@@ -13,7 +13,8 @@ import utils.SystemInfo;
 public class PeerProcess {
 	private static String peerInfoFN = "PeerInfo.cfg";
   private static String localPeerInfoFN = "PeerInfo_local.cfg";
-  private static String SystemInfo = "Common.cfg";
+  private static String SystemInfoFN = "Common.cfg";
+	private static String cfgDir = "../config/";
 
 	/**
 	 * Read Peer Info config
@@ -22,7 +23,6 @@ public class PeerProcess {
 	 */
 	private static void readPeerInfo(String hostPeerId, boolean debug) {
 		String fileName = peerInfoFN;
-		String cfgDir = "../config/";
 
 		Peer hostPeer = null;
 		List<Peer> peerList = new ArrayList<Peer>();
@@ -31,9 +31,8 @@ public class PeerProcess {
 			fileName = localPeerInfoFN;
 		}
 		try {
-			cfgDir = cfgDir + fileName;
-			System.out.println(String.format("[%s] Start reading PeerInfo from %s", hostPeerId, cfgDir));
-			File cfgFile = new File(cfgDir);
+			System.out.println(String.format("[%s] Start reading PeerInfo from %s", hostPeerId, cfgDir + fileName));
+			File cfgFile = new File(cfgDir + fileName);
 			Scanner fileReader = new Scanner(cfgFile);
 			
 			while (fileReader.hasNextLine()) {
@@ -55,8 +54,24 @@ public class PeerProcess {
 		}
 	}
 
-	private static void readCommon() {
-
+	private static void readCommon(String hostPeerId) {
+		try {
+			String fileName = SystemInfoFN;
+			File cfgFile = new File(cfgDir + fileName);
+			Scanner fileReader = new Scanner(cfgFile);
+			
+			ArrayList<String> infoList = new ArrayList<String>();
+			System.out.println(String.format("[%s] Start reading Common from %s", hostPeerId, cfgDir + fileName));
+			while (fileReader.hasNextLine()) {
+				String infoLine = fileReader.nextLine();
+				String[] infos = infoLine.split("\\s+");
+				infoList.add(infos[1]);
+			}
+			fileReader.close();
+			SystemInfo s = new SystemInfo(infoList);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
 	}
 	/**
 	 * Main Process of the Peer
@@ -69,10 +84,13 @@ public class PeerProcess {
 			}
 			/* Load peer infos */
 			readPeerInfo(args[0], true);
+			readCommon(args[0]);
+
 			SystemInfo s = utils.SystemInfo.getInstance();
 			Peer hostPeer = s.getHostPeer();
 			/* Set peer logger */
 			LogHandler logging = new LogHandler(hostPeer);
+			logging.logSystemParam();
 			logging.logEstablishPeer(hostPeer);
 
       /* Start peer server thread*/
