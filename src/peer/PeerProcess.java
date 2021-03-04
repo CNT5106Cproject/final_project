@@ -1,35 +1,87 @@
 package peer;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
 import utils.CustomExceptions;
 import utils.ErrorCode;
-import peer.Server;
-import peer.Peer;
-
+import utils.LogHandler;
+import utils.SystemInfo;
 public class PeerProcess {
+	private static String peerInfoFN = "PeerInfo.cfg";
+  private static String localPeerInfoFN = "PeerInfo_local.cfg";
+  private static String SystemInfo = "Common.cfg";
+
 	/**
-  * Main Process of the Peer
-  */
-  public static void main(String[] args) {
-		ErrorCode code = new ErrorCode();
-		boolean debug = false;
+	 * Read Peer Info config
+	 * 
+	 * @debug = true -> read peer info's with host is local
+	 */
+	private static SystemInfo readPeerInfo(String hostPeerId, boolean debug) {
+		String fileName = peerInfoFN;
+		String cfgDir = "../config/";
+
+		Peer hostPeer = null;
+		List<Peer> peerList = new ArrayList<Peer>();
+		SystemInfo s = null;
+
+		if (debug) {
+			fileName = localPeerInfoFN;
+		}
 		try {
-			PeerProcess process = new PeerProcess();
-			// 0 - ID, 1 - hostname, 2 - port
-			if(args.length < 4) {
-				throw new CustomExceptions(code.invalidArgumentLength, "Missing Peer Info Arguments");
+			cfgDir = cfgDir + fileName;
+			System.out.println(String.format("[%s] Start reading PeerInfo from %s", hostPeerId, cfgDir));
+			File cfgFile = new File(cfgDir);
+			Scanner fileReader = new Scanner(cfgFile);
+			
+			while (fileReader.hasNextLine()) {
+				String infoLine = fileReader.nextLine();
+				String[] infos = infoLine.split("\\s+");
+				Peer newPeer = new Peer(infos[0], infos[1], infos[2], infos[3]);
+				if (hostPeerId.equals(newPeer.getId())) {
+					// Store Peer as host
+					System.out.println(String.format("[%s] Successfully set host peer info", hostPeerId));
+					hostPeer = newPeer;
+				}
+				peerList.add(newPeer);
 			}
-			Peer peer = new Peer(args[0], args[1], args[2], args[3]);
-      System.out.println("peerId: [" + peer.getId() + "]" + ", Start Establishing Peer");  
-      // TODO Starting Server
+			fileReader.close();
+
+			s = new SystemInfo(hostPeer, peerList);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		return s;
+	}
+
+	/**
+	 * Main Process of the Peer
+	 */
+	public static void main(String[] args) {
+		try {
+			/* Must have at least peer ID */
+			if (args.length < 1) {
+				throw new CustomExceptions(ErrorCode.invalidArgumentLength, "Missing Peer Id");
+			}
+			/* Load peer infos */
+			SystemInfo s = readPeerInfo(args[0], true);
+			Peer hostPeer = s.getHostPeer();
+			/* Set peer logger */
+			LogHandler logging = new LogHandler(hostPeer);
+			logging.logEstablishPeer(hostPeer);
+
+      /* Start peer server thread*/
       // - Record the connections number with other clients
-			Server server = new Server();
-			server.setPort(peer.getPort());
+			Server server = new Server(hostPeer);
 			server.start();
       // TODO build client socket with others
       // - check in interval - remain N-1 connections to other server
 		}
-		catch (Exception ex) {
-			System.out.println(ex);
+		catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
   

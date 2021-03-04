@@ -13,9 +13,9 @@ import java.text.SimpleDateFormat;
 
 import peer.Peer;
 
-public class LogHandler {
+public final class LogHandler {
 
-  private int peerId;
+  private String peerId;
 	private String hostName;
 	private int port;
   private FileHandler logFH;
