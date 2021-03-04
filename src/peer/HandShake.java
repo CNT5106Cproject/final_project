@@ -15,12 +15,12 @@ public class HandShake implements Serializable {
 	private static final long serialVersionUID = -1482860868859618509L;
 	private static final String Header = "P2PFILESHARINGPROJ";
 	private final String peerMsgHeader;
-	private String peerID;
+	private int peerID;
 
 	/**
 	 * @param peerID
 	 */
-	public HandShake(String peerID) {
+	public HandShake(int peerID) {
 		super();
 		this.peerID = peerID;
 		this.peerMsgHeader = getHeader();
