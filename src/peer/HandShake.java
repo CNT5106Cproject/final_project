@@ -7,10 +7,6 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-/**
- * @author Dhiraj Borade
- *
- */
 public class HandShake implements Serializable {
 
 	/**
