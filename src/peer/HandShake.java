@@ -15,12 +15,12 @@ public class HandShake implements Serializable {
 	private static final long serialVersionUID = -1482860868859618509L;
 	private static final String Header = "P2PFILESHARINGPROJ";
 	private final String peerMsgHeader;
-	private int peerID;
+	private String peerID;
 
 	/**
 	 * @param peerID
 	 */
-	public HandShake(int peerID) {
+	public HandShake(String peerID) {
 		super();
 		this.peerID = peerID;
 		this.peerMsgHeader = getHeader();
@@ -29,13 +29,13 @@ public class HandShake implements Serializable {
 	/**
 	 * @return the peerID
 	 */
-	public int getPeerID() {
+	public String getPeerID() {
 		return peerID;
 	}
 
 	/**
 	 * @param peerID
-	 *            the peerID to set
+	 * the peerID to set
 	 */
 	public void setPeerID(String peerID) {
 		this.peerID = peerID;
@@ -74,14 +74,14 @@ public class HandShake implements Serializable {
 	}
 
 	// return value could be changed to HandShakeMsg if header is also needed
-	public int ReceiveHandShake(InputStream in) throws IOException {
+	public String ReceiveHandShake(InputStream in) throws IOException {
 		try {
 			ObjectInputStream ipStream = new ObjectInputStream(in);
 			HandShake Response = (HandShake) ipStream.readObject();
-			return Response != null ? Response.peerID : -1;
+			return Response != null ? Response.peerID : null;
 		} catch (ClassNotFoundException e) {
 			System.out.println(e);
 		}
-		return -1;
+		return null;
 	}
 }
