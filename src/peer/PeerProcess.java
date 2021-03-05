@@ -9,7 +9,6 @@ import java.util.Scanner;
 import utils.CustomExceptions;
 import utils.ErrorCode;
 import utils.LogHandler;
-import utils.SystemInfo;
 public class PeerProcess {
 	private static String peerInfoFN = "PeerInfo.cfg";
   private static String localPeerInfoFN = "PeerInfo_local.cfg";
@@ -25,7 +24,7 @@ public class PeerProcess {
 		String fileName = peerInfoFN;
 
 		Peer hostPeer = null;
-		List<Peer> peerList = new ArrayList<Peer>();
+		List<Peer> neighborList = new ArrayList<Peer>();
 
 		if (debug) {
 			fileName = localPeerInfoFN;
@@ -44,11 +43,13 @@ public class PeerProcess {
 					System.out.println(String.format("[%s] Successfully set host peer info", hostPeerId));
 					hostPeer = newPeer;
 				}
-				peerList.add(newPeer);
+				else {
+					neighborList.add(newPeer);
+				}
 			}
 			fileReader.close();
 
-			SystemInfo s = new SystemInfo(hostPeer, peerList);
+			SystemInfo s = new SystemInfo(hostPeer, neighborList);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -86,19 +87,27 @@ public class PeerProcess {
 			readPeerInfo(args[0], true);
 			readCommon(args[0]);
 
-			SystemInfo s = utils.SystemInfo.getInstance();
+			SystemInfo s = SystemInfo.getSingletonObj();
 			Peer hostPeer = s.getHostPeer();
 			/* Set peer logger */
-			LogHandler logging = new LogHandler(hostPeer);
+			LogHandler logging = new LogHandler();
 			logging.logSystemParam();
-			logging.logEstablishPeer(hostPeer);
+			logging.logEstablishPeer();
 
-      /* Start peer server thread*/
-      // - Record the connections number with other clients
-			Server server = new Server(hostPeer);
+      /* Start peer server thread -> inside we create Handler to handle sockets */
+			Server server = new Server();
 			server.start();
-      // TODO build client socket with others
-      // - check in interval - remain N-1 connections to other server
+
+			/* Start building client threads for other target hosts */
+			logging.writeLog("Start client connections");
+			List<Peer> neighborList = s.getPeerList();
+			for(int i=0; i < neighborList.size(); i++) {
+				Client client = new Client(neighborList.get(i));
+				Thread t = new Thread(client);
+				t.start();
+			}
+
+			logging.writeLog("Number of thread: " + java.lang.Thread.activeCount());
 		}
 		catch (Exception e) {
 			e.printStackTrace();

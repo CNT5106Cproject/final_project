@@ -1,17 +1,29 @@
-package utils;
+package peer;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import peer.Peer;
 /**
  * Create a singleton for System Parameters
  */
 public final class SystemInfo {
   
-  private static SystemInfo instance = null;
+  private static SystemInfo singletonObj = null;
+
+  private static int retryLimit = 100;
+  private static int retryInr = 3; // retry interval 
+
+  /**
+   * Host peer infos
+   * - host 
+   * - neighborList
+   */
   private Peer host;
-  private List<Peer> peerList = new ArrayList<Peer>();
+  private List<Peer> neighborList = new ArrayList<Peer>();
+
+  /**
+   * System Parameters from config
+   */
   private int preferN;
   private int unChokingInr;
   private int optUnchokingInr;
@@ -19,12 +31,15 @@ public final class SystemInfo {
   private int targetFileSize;
   private int filePieceSize;
   
+  /**
+   * Initialize peer's System infos
+   */
   public SystemInfo() {}
   
-  public SystemInfo(Peer host, List<Peer> peerList) {
-    instance = new SystemInfo();
-    instance.setHostPeer(host);
-    instance.setPeerList(peerList);
+  public SystemInfo(Peer host, List<Peer> neighborList) {
+    singletonObj = new SystemInfo();
+    singletonObj.setHostPeer(host);
+    singletonObj.setPeerList(neighborList);
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -38,26 +53,26 @@ public final class SystemInfo {
     * FileSize 2167705
     * PieceSize 16384
     */
-    instance.setSystemParam(SystemInfoList);
+    singletonObj.setSystemParam(SystemInfoList);
   }
 
-  public static SystemInfo getInstance() {
-    if (instance == null) {
+  public static SystemInfo getSingletonObj() {
+    if (singletonObj == null) {
       synchronized (SystemInfo.class) {
-        if (instance == null) {
-          instance = new SystemInfo();
+        if (singletonObj == null) {
+          singletonObj = new SystemInfo();
         }
       }
     }
-    return instance;
+    return singletonObj;
   }
 
   public void setHostPeer(Peer host) {
     this.host = host;
   }
 
-  public void setPeerList(List<Peer> peerList) {
-    this.peerList = peerList;
+  public void setPeerList(List<Peer> neighborList) {
+    this.neighborList = neighborList;
   }
 
   public void setSystemParam(List<String> SystemInfoList) {
@@ -82,11 +97,11 @@ public final class SystemInfo {
   }
 
   public List<Peer> getPeerList() {
-    return this.peerList;
+    return this.neighborList;
   }
 
   /**
-  * Get System Infos
+  * Get system params
   */
   public int getPreferN() {
     return this.preferN;
@@ -110,5 +125,13 @@ public final class SystemInfo {
 
   public int getFilePieceSize() {
     return this.filePieceSize;
+  }
+
+  public int getRetryLimit() {
+    return SystemInfo.retryLimit;
+  }
+
+  public int getRetryInterval() {
+    return SystemInfo.retryInr;
   }
 }

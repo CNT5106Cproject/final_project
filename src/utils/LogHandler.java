@@ -6,23 +6,27 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.logging.StreamHandler;
 import java.util.Date;
 import java.util.logging.FileHandler;
 import java.util.logging.Filter;
 import java.text.SimpleDateFormat;
 
 import peer.Peer;
+import peer.SystemInfo;
 
 public final class LogHandler {
 
-  private String peerId;
+  private String hostPeerId;
 	private String hostName;
 	private int port;
-  private FileHandler logFH;
-  private FileHandler errLogFH;
+  private FileHandler logFH = null;
+  private FileHandler errLogFH = null;
   private String logDir = "../log";
 
   private static Logger logger = null;
+  private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
+
   static {
     /*
     * Set java logging file handler msg format, java default is XML format
@@ -58,10 +62,11 @@ public final class LogHandler {
     /* 
     * Set file name with date
     */
+    
     String dateString = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
-    String logFN = String.format("log_peer_[%s]_[%s].log", this.peerId, dateString);
-    String errLogFN = String.format("error_log_peer_[%s]_[%s].log", this.peerId, dateString);
-  
+    String logFN = String.format("log_peer_[%s]_[%s].log", this.hostPeerId, dateString);
+    String errLogFN = String.format("error_log_peer_[%s]_[%s].log", this.hostPeerId, dateString);
+
     try {
       this.logFH = new FileHandler(this.logDir + "/" + logFN, true);
       this.logFH.setFormatter(new SimpleFormatter());
@@ -77,31 +82,45 @@ public final class LogHandler {
   }
 
   public LogHandler() {
-
+    /** 
+     * Create logs, and adding log handlers
+    */
+    if(logFH == null || errLogFH == null) {
+      Peer hostPeer = sysInfo.getHostPeer();
+      this.hostPeerId = hostPeer.getId();
+      this.hostName = hostPeer.getHostName();
+      this.port = hostPeer.getPort(); 
+      createLogFiles();
+      logger.addHandler(this.logFH);
+      logger.addHandler(this.errLogFH);
+    }
   }
 
-  public LogHandler(Peer host) {
-    this.peerId = host.getId();
-    this.hostName = host.getHostName();
-    this.port = host.getPort(); 
-    createLogFiles();
-    logger.addHandler(this.logFH);
-    logger.addHandler(this.errLogFH);
-  }
+  // public LogHandler(Peer hostPeer) {
+  //   this.hostPeerId = hostPeer.getId();
+  //   this.hostName = hostPeer.getHostName();
+  //   this.port = hostPeer.getPort(); 
+  //   createLogFiles();
+  //   logger.addHandler(this.logFH);
+  //   logger.addHandler(this.errLogFH);
+  // }
 
   /**
   * Custom Messages
   */
   public void writeLog(String msg) {
-    logger.info(msg);
+    logger.info(String.format("Peer [%s] %s", this.hostPeerId, msg));
   }
 
-  public void writeLog(String msg, String lvl) {
+  public void writeLog(String lvl, String msg) {
     if(lvl == "severe") {
-      logger.severe(msg);
+      logger.severe(String.format("Peer [%s] %s", this.hostPeerId, msg));
     }
     else if(lvl == "warning") {
-      logger.warning(msg);
+      logger.warning(String.format("Peer [%s] %s", this.hostPeerId, msg));
+    }
+    else {
+      logger.finest(String.format("Peer [%s] %s", this.hostPeerId, msg));
     }
   }
   
@@ -110,15 +129,14 @@ public final class LogHandler {
    *
    */
   public void logSystemParam() {
-    SystemInfo s = SystemInfo.getInstance();
     String msg = String.format(
       "System Params: PreferN [%s], UnChokingInr [%s], OptUnChokingInr [%s], FileName [%s], FileSize [%s], PieceSize [%s]", 
-      s.getPreferN(),
-      s.getUnChokingInr(),
-      s.getOptUnChokingInr(),
-      s.getTargetFileName(),
-      s.getTargetFileSize(),
-      s.getFilePieceSize()
+      sysInfo.getPreferN(),
+      sysInfo.getUnChokingInr(),
+      sysInfo.getOptUnChokingInr(),
+      sysInfo.getTargetFileName(),
+      sysInfo.getTargetFileSize(),
+      sysInfo.getFilePieceSize()
     );
     logger.info(msg);
   }
@@ -126,21 +144,52 @@ public final class LogHandler {
   /**
   * System Actions
   */
-  public void logEstablishPeer(Peer host) {
-    String msg = String.format("Peer [%s] start establishing", host.getId());
+  public void logEstablishPeer() {
+    String msg = String.format("Peer [%s] start establishing host peer", this.hostPeerId);
     logger.info(msg);
   }
 
-  public void logStartServer(Peer host) {
-    String msg = String.format("Peer [%s] start server thread", host.getId());
+  public void logStartServer() {
+    String msg = String.format("Peer [%s] start server thread", this.hostPeerId);
     logger.info(msg);
   }
 
+  public void logStartClient(Peer targetHost) {
+    String msg = String.format(
+      "Peer [%s] start client thread, connecting to [%s]", this.hostPeerId, targetHost.getId()
+    );
+    logger.info(msg);
+  }
+  
   /**
-  * Peer actions
+  * Peer actions - [Important] 
+  * Do not forget to follow the project description format.
   */
-  public void logStartConnect(Peer host, Peer client) {
-    String msg = String.format("Peer [%s] makes a connection to Peer [%s]", client.getId(), host.getId());
+  // 1. TCP connection
+  public void logStartConn(Peer client, Peer targetHost) {
+    String msg = String.format("Peer [%s] makes a connection to Peer [%s]", client.getId(), targetHost.getId());
+    logger.info(msg);
+  }
+  
+  // 2. change of preferred neighbors
+  // 3. change of optimistically unchoked neighbor
+  // 4. unchoking
+  // 5. choking
+  // 6. receiving ‘have’ message
+  // 7. receiving ‘interested’ message
+  // 8. receiving ‘not interested’ message
+  // 9. downloading a piece
+  // 10. completion of download
+  
+  /**
+  * Peer action errors
+  */
+  public void logConnError(Peer client, Peer targetHost) {
+    String msg = String.format("Peer [%s] occurs connection error with Peer [%s], start retry in [%s] sec", 
+      client.getId(), 
+      targetHost.getId(),
+      sysInfo.getRetryInterval()
+    );
     logger.info(msg);
   }
   
