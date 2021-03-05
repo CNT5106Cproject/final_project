@@ -4,42 +4,64 @@ import java.net.*;
 import java.io.*;
 import java.nio.*;
 import java.nio.channels.*;
-import java.util.*;
 
-public class Server {
+import utils.LogHandler;
 
-	private static int sPort = 5566;   //The server will be listening on this port number
+public class Server extends Thread{
 
-	public static void setPort(int port) {
-		sPort = port;
+	private Peer hostPeer;
+	private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
+	private static LogHandler logging = new LogHandler();
+
+	public Server() {
+		Peer hostPeer = sysInfo.getHostPeer();
+		this.hostPeer = hostPeer;
 	}
-	public static void start() throws Exception {
-		System.out.println("The server is running."); 
-    ServerSocket listener = new ServerSocket(sPort);
-		int clientNum = 1;
-    try {
-			while(true) {
-				new Handler(listener.accept(),clientNum).start();
-				System.out.println("Client "  + clientNum + " is connected!");
-				clientNum++;
-      }
-    } finally {
-      listener.close();
-    }
+
+	public Server(Peer peer) {
+		this.hostPeer = peer;
 	}
+
+	public void run() {
+		logging.logStartServer();
+		
+		try {
+			ServerSocket listener = new ServerSocket(hostPeer.getPort());
+			try {
+				int clientNum = 1;
+				while(true) {
+					new Handler(listener.accept(),clientNum).start();
+					// System.out.println("Client "  + clientNum + " is connected!");
+					
+					logging.writeLog(String.format(
+						"# %s client is connected, prepare to handshake",
+						clientNum
+					));
+					clientNum++;
+				}
+			} 
+			finally {
+				listener.close();
+			}
+		}
+		catch(IOException ex) {
+
+		}
+	}
+
 
 	/**
-     	* A handler thread class.  Handlers are spawned from the listening
-     	* loop and are responsible for dealing with a single client's requests.
-     	*/
+	* A handler thread class.  Handlers are spawned from the listening
+	* loop and are responsible for dealing with a single client's requests.
+	*/
   private static class Handler extends Thread {
-  	private String message;    //message received from the client
-		private String MESSAGE;    //uppercase message send to the client
+  	private String message;    // message received from the client
+		private String MESSAGE;    // uppercase message send to the client
 		private Socket connection;
 		private ObjectInputStream in;	//stream read from the socket
     private ObjectOutputStream out;    //stream write to the socket
 		private int no;		//The index number of the client
-
+		
     public Handler(Socket connection, int no) {
       this.connection = connection;
 	    this.no = no;
@@ -55,11 +77,11 @@ public class Server {
 					while(true) {
 						//receive the message sent from the client
 						message = (String)in.readObject();
-						//show the message to the user
-						System.out.println("Receive message: " + message + " from client " + no);
-						//Capitalize all letters in the message
+						// show the message to the user
+						logging.writeLog(String.format("Receive msg from client #%s, msg: %s", no, message));
+						
+						// Capitalize all letters in the message
 						MESSAGE = message.toUpperCase();
-						//send MESSAGE back to the client
 						sendMessage(MESSAGE);
 					}
 				}
@@ -88,7 +110,7 @@ public class Server {
 			try{
 				out.writeObject(msg);
 				out.flush();
-				System.out.println("Send message: " + msg + " to Client " + no);
+				// System.out.println("Send message: " + msg + " to Client " + no);
 			}
 			catch(IOException ioException){
 				ioException.printStackTrace();
