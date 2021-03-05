@@ -14,6 +14,7 @@ public class HandShake implements Serializable {
 	 */
 	private static final long serialVersionUID = -1482860868859618509L;
 	private static final String Header = "P2PFILESHARINGPROJ";
+	private byte[] zeroBits = new byte[10];
 	private final String peerMsgHeader;
 	private String peerID;
 
@@ -24,6 +25,14 @@ public class HandShake implements Serializable {
 		super();
 		this.peerID = peerID;
 		this.peerMsgHeader = getHeader();
+	}
+
+	public byte[] getZeroBits() {
+		return zeroBits;
+	}
+
+	public void setZeroBits(byte[] zeroBits) {
+		this.zeroBits = zeroBits;
 	}
 
 	/**
@@ -63,7 +72,7 @@ public class HandShake implements Serializable {
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		return sb.append("[Header :").append(getHeader()).append("]\n").append("[Peer ID: ").append(this.peerID).append("]")
+		return sb.append("[Header :").append(getHeader()).append("]\n").append("[Zero Bits :").append(getZeroBits()).append("[Peer ID: ").append(this.peerID).append("]")
 				.toString();
 	}
 
