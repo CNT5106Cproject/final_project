@@ -10,7 +10,7 @@ import utils.CustomExceptions;
 import utils.ErrorCode;
 import utils.LogHandler;
 public class PeerProcess {
-	private static String peerInfoFN = "PeerInfo.cfg";
+	// private static String peerInfoFN = "PeerInfo.cfg";
   private static String localPeerInfoFN = "PeerInfo_local.cfg";
   private static String SystemInfoFN = "Common.cfg";
 	private static String cfgDir = "../config/";
