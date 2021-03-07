@@ -72,7 +72,7 @@ public class HandShake implements Serializable {
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		return sb.append("[Header :").append(getHeader()).append("]\n").append("[Zero Bits :").append(getZeroBits()).append("[Peer ID: ").append(this.peerID).append("]")
+		return sb.append("Header :").append(getHeader()).append("\n").append("Zero Bits :").append(getZeroBits()).append("Peer ID: ").append(this.peerID).append(" ")
 				.toString();
 	}
 
