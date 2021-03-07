@@ -17,6 +17,18 @@ public class FileManager {
 	private final HashSet<Integer> interested = new HashSet<Integer>();
 	private final HashSet<Integer> downloading = new HashSet<Integer>();
 	private final HashMap<Integer, HashSet<Integer>> otherPeerHave = new HashMap<Integer, HashSet<Integer>>();
+	private byte[] ownBitfield;
+
+	public static byte[] bitFlag = {
+		(byte)0b10000000,
+		(byte)0b01000000,
+		(byte)0b00100000,
+		(byte)0b00010000,
+		(byte)0b00001000,
+		(byte)0b00000100,
+		(byte)0b00000010,
+		(byte)0b00000001
+	};
 
 	private static FileManager instance = null;
 	/**
@@ -39,6 +51,10 @@ public class FileManager {
 		int remainder = fileLength % blockSize;
 		this.blockNum = fileLength/blockSize + ((remainder > 0)?1:0);
 		this.lastBlockSize = (remainder > 0)?remainder:blockSize;
+		// init bitfield
+		int remainderBits = this.blockNum % 8;
+		int bitfieldBytesNum = this.blockNum/8 + ((remainderBits == 0)?0:1);
+		this.ownBitfield = new byte[bitfieldBytesNum];
 		if(mode != "rw" && mode != "r"){
 			System.err.println("FileManager init: unknown mode");
 			return;
@@ -54,9 +70,39 @@ public class FileManager {
 					this.interested.add(i);
 				}
 			}
+			if(mode == "r"){
+				buildOwnBitfield(remainderBits);
+			}
 		}
 		catch(IOException e){
 			System.err.println("FileManager init: error");
+		}
+	}
+	private void buildOwnBitfield(int remainderBits){
+		byte full = (byte)0b11111111;
+		int bitfieldBytesNum = this.ownBitfield.length;
+		for(int i = 0; i < bitfieldBytesNum-1; i++){
+			this.ownBitfield[i] |= full;
+		}
+		if(remainderBits == 0){
+			this.ownBitfield[bitfieldBytesNum-1] |= full;
+		}
+		else{
+			byte lastByte = 0;
+			for(int i = 0; i < remainderBits; i++){
+				lastByte |= FileManager.bitFlag[i];
+			}
+			this.ownBitfield[bitfieldBytesNum-1] = lastByte;
+		}
+		// printByteArray(this.ownBitfield);
+	}
+	private void updateOwnBitfield(int blockIdx){
+		this.ownBitfield[blockIdx/8] |= FileManager.bitFlag[blockIdx%8];
+		// printByteArray(this.ownBitfield);
+	}
+	private void printByteArray(byte[] bytes){
+		for (byte b : bytes) {
+			System.out.println(Integer.toBinaryString(b & 255 | 256).substring(1));
 		}
 	}
 	/**
@@ -86,16 +132,21 @@ public class FileManager {
 		}
 		return FileManager.instance;
 	}
-	public static byte[] bitFlag = {
-		(byte)0b10000000,
-		(byte)0b01000000,
-		(byte)0b00100000,
-		(byte)0b00010000,
-		(byte)0b00001000,
-		(byte)0b00000100,
-		(byte)0b00000010,
-		(byte)0b00000001
-	};
+	/**
+	 * Gets the own bitfield.
+	 *
+	 * @return     The own bitfield.
+	 */
+	public byte[] getOwnBitfield(){
+		// synchronize with write(), make sure we return correct bitfield
+		this.lock.lock();
+		try{
+			return this.ownBitfield;
+		}
+		finally{
+			this.lock.unlock();
+		}
+	}
 	/**
 	 * insert block information(bitfield) of peerId
 	 *
@@ -226,6 +277,7 @@ public class FileManager {
 			this.file.seek(blockIdx*this.blockSize);
 			this.file.write(b, 0, len);
 			this.downloading.remove(blockIdx);
+			updateOwnBitfield(blockIdx);
 		}	
 		catch(IOException | NullPointerException | IndexOutOfBoundsException e){
 			System.err.println("FileManager write: write failed");
@@ -249,7 +301,8 @@ public class FileManager {
 	}
 	public static void main(String args[])
 	{
-		FileManager client =  FileManager.getInstance("XZY","rw",72,8);
+		FileManager client =  FileManager.getInstance("XZY","rw",161,10);
+		// System.out.println(client.blockNum);
 		FileManager b = FileManager.getInstance();
 		if(b == client) System.out.println("same");
 		// byte[] b = {(byte)0b10101010,(byte)0b11111111};
