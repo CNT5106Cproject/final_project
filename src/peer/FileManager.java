@@ -17,8 +17,8 @@ public class FileManager {
 	private final HashSet<Integer> interested = new HashSet<Integer>();
 	private final HashSet<Integer> downloading = new HashSet<Integer>();
 	private final HashMap<Integer, HashSet<Integer>> otherPeerHave = new HashMap<Integer, HashSet<Integer>>();
-	private boolean haveCompleteFile = true;
 
+	private static FileManager instance = null;
 	/**
 	 * Constructs a new instance.
 	 *
@@ -29,7 +29,7 @@ public class FileManager {
 	 * @param      fileLength  The file length
 	 * @param      blockSize   The block size
 	 */
-	public FileManager(String fileName, String mode, int fileLength, int blockSize){
+	private FileManager(String fileName, String mode, int fileLength, int blockSize){
 		// setup basic file info
 
 		this.mode = mode;
@@ -48,7 +48,6 @@ public class FileManager {
 			file = new RandomAccessFile(this.fileName, "rw");
 			// if file already exist, replace it with a empty file
 			if(mode == "rw"){
-				this.haveCompleteFile = false;
 				file.setLength(0);
 				file.setLength(this.fileLength);
 				for(int i = 0; i < this.blockNum; i++){
@@ -60,7 +59,33 @@ public class FileManager {
 			System.err.println("FileManager init: error");
 		}
 	}
-
+	/**
+	 * Initializes and gets the instance.
+	 *
+	 * @param      fileName    The file name
+	 * @param      mode        The mode
+	 * @param      fileLength  The file length
+	 * @param      blockSize   The block size
+	 *
+	 * @return     The instance.
+	 */
+	public static FileManager getInstance(String fileName, String mode, int fileLength, int blockSize){
+		if(FileManager.instance == null){
+			FileManager.instance = new FileManager(fileName, mode, fileLength, blockSize);
+		}
+		return FileManager.instance;
+	}
+	/**
+	 * Gets the instance.
+	 *
+	 * @return     The instance. May return null if not initialized.
+	 */
+	public static FileManager getInstance(){
+		if(FileManager.instance == null){
+			System.err.println("FileManager getInstance: null instance");
+		}
+		return FileManager.instance;
+	}
 	public static byte[] bitFlag = {
 		(byte)0b10000000,
 		(byte)0b01000000,
@@ -114,7 +139,7 @@ public class FileManager {
 	 * @return     True if complete, False otherwise.
 	 */
 	public boolean isComplete(){
-		return this.haveCompleteFile;
+		return (this.downloading.size() + this.interested.size() == 0);
 	}
 	/**
 	 * select interested file block from peerId "have" set and move selected 
@@ -132,8 +157,8 @@ public class FileManager {
 		if(interested.size() == 0) return -1;
 		Random rd = new Random();
 		int blockIdx = interested.get(rd.nextInt(interested.size()));
-		this.interested.remove(blockIdx);
 		this.downloading.add(blockIdx);
+		this.interested.remove(blockIdx);
 		return blockIdx;
 	}
 	/**
@@ -201,9 +226,6 @@ public class FileManager {
 			this.file.seek(blockIdx*this.blockSize);
 			this.file.write(b, 0, len);
 			this.downloading.remove(blockIdx);
-			if(this.downloading.size() + this.interested.size() == 0){
-				this.haveCompleteFile = true;
-			}
 		}	
 		catch(IOException | NullPointerException | IndexOutOfBoundsException e){
 			System.err.println("FileManager write: write failed");
@@ -227,10 +249,12 @@ public class FileManager {
 	}
 	public static void main(String args[])
 	{
-		FileManager client = new FileManager("XZY","rw",72,8);
+		FileManager client =  FileManager.getInstance("XZY","rw",72,8);
+		FileManager b = FileManager.getInstance();
+		if(b == client) System.out.println("same");
 		// byte[] b = {(byte)0b10101010,(byte)0b11111111};
 		// client.insertBitfield(0,b,2);
-		client.updateHave(0,1);
+		// client.updateHave(0,1);
 		// client.write(127,"12345678".getBytes(),8);
 		// client.write(15,"abcdefgz".getBytes(),8);
 		// System.out.println(client.blockNum);
