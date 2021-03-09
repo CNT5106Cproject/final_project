@@ -17,9 +17,6 @@ import peer.SystemInfo;
 
 public final class LogHandler {
 
-  private String hostPeerId;
-	private String hostName;
-	private int port;
   private FileHandler logFH = null;
   private FileHandler errLogFH = null;
   private String logDir = "../log";
@@ -35,7 +32,6 @@ public final class LogHandler {
       "java.util.logging.SimpleFormatter.format",
       "[%1$tF %1$tT] [%4$s] [%3$s] %5$s %n"
     );
-    logger = Logger.getLogger(LogHandler.class.getName());
   }
 
   private static class logFilter implements Filter {
@@ -62,10 +58,9 @@ public final class LogHandler {
     /* 
     * Set file name with date
     */
-    
-    String dateString = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
-    String logFN = String.format("log_peer_[%s]_[%s].log", this.hostPeerId, dateString);
-    String errLogFN = String.format("error_log_peer_[%s]_[%s].log", this.hostPeerId, dateString);
+    String dateString = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+    String logFN = String.format("log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
+    String errLogFN = String.format("error_log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
 
     try {
       this.logFH = new FileHandler(this.logDir + "/" + logFN, true);
@@ -85,42 +80,31 @@ public final class LogHandler {
     /** 
      * Create logs, and adding log handlers
     */
-    if(logFH == null || errLogFH == null) {
-      Peer hostPeer = sysInfo.getHostPeer();
-      this.hostPeerId = hostPeer.getId();
-      this.hostName = hostPeer.getHostName();
-      this.port = hostPeer.getPort(); 
+    if(logger == null) {
+      logger = Logger.getLogger(LogHandler.class.getName());
       createLogFiles();
       logger.addHandler(this.logFH);
       logger.addHandler(this.errLogFH);
     }
   }
 
-  // public LogHandler(Peer hostPeer) {
-  //   this.hostPeerId = hostPeer.getId();
-  //   this.hostName = hostPeer.getHostName();
-  //   this.port = hostPeer.getPort(); 
-  //   createLogFiles();
-  //   logger.addHandler(this.logFH);
-  //   logger.addHandler(this.errLogFH);
-  // }
-
   /**
   * Custom Messages
   */
   public void writeLog(String msg) {
-    logger.info(String.format("Peer [%s] %s", this.hostPeerId, msg));
+    logger.info(String.format("Peer [%s] %s", sysInfo.getHostPeer().getId(), msg));
   }
 
   public void writeLog(String lvl, String msg) {
+    String hostPeerId = sysInfo.getHostPeer().getId();
     if(lvl == "severe") {
-      logger.severe(String.format("Peer [%s] %s", this.hostPeerId, msg));
+      logger.severe(String.format("Peer [%s] %s", hostPeerId, msg));
     }
     else if(lvl == "warning") {
-      logger.warning(String.format("Peer [%s] %s", this.hostPeerId, msg));
+      logger.warning(String.format("Peer [%s] %s", hostPeerId, msg));
     }
     else {
-      logger.finest(String.format("Peer [%s] %s", this.hostPeerId, msg));
+      logger.finest(String.format("Peer [%s] %s", hostPeerId, msg));
     }
   }
   
@@ -134,9 +118,9 @@ public final class LogHandler {
       sysInfo.getPreferN(),
       sysInfo.getUnChokingInr(),
       sysInfo.getOptUnChokingInr(),
-      sysInfo.getTargetFileName(),
-      sysInfo.getTargetFileSize(),
-      sysInfo.getFilePieceSize()
+      sysInfo.getFileName(),
+      sysInfo.getFileSize(),
+      sysInfo.getPieceSize()
     );
     logger.info(msg);
   }
@@ -145,18 +129,18 @@ public final class LogHandler {
   * System Actions
   */
   public void logEstablishPeer() {
-    String msg = String.format("Peer [%s] start establishing host peer", this.hostPeerId);
+    String msg = String.format("Peer [%s] start establishing host peer", sysInfo.getHostPeer().getId());
     logger.info(msg);
   }
 
   public void logStartServer() {
-    String msg = String.format("Peer [%s] start server thread", this.hostPeerId);
+    String msg = String.format("Peer [%s] start server thread", sysInfo.getHostPeer().getId());
     logger.info(msg);
   }
 
   public void logStartClient(Peer targetHost) {
     String msg = String.format(
-      "Peer [%s] start client thread, connecting to [%s]", this.hostPeerId, targetHost.getId()
+      "Peer [%s] start client thread, connecting to [%s]", sysInfo.getHostPeer().getId(), targetHost.getId()
     );
     logger.info(msg);
   }
