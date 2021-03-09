@@ -263,9 +263,10 @@ public class FileManager {
 	}
 	public static void main(String args[])
 	{
-		FileManager client =  FileManager.getInstance("XZY","rw",72,8);
-		FileManager b = FileManager.getInstance();
-		if(b == client) System.out.println("same");
+		// FileManager client =  FileManager.getInstance("XZY","rw",72,8);
+		// FileManager b = FileManager.getInstance();
+		// if(b == client) System.out.println("same");
+
 		// byte[] b = {(byte)0b10101010,(byte)0b11111111};
 		// client.insertBitfield(0,b,2);
 		// client.updateHave(0,1);
