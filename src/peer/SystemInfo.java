@@ -3,6 +3,9 @@ package peer;
 import java.util.ArrayList;
 import java.util.List;
 
+import utils.CustomExceptions;
+import utils.ErrorCode;
+
 /**
  * Create a singleton for System Parameters
  */
@@ -27,8 +30,8 @@ public final class SystemInfo {
   private int preferN;
   private int unChokingInr;
   private int optUnchokingInr;
-  private String targetFileName;
-  private int targetFileSize;
+  private String fileName;
+  private int fileSize;
   private int filePieceSize;
   
   /**
@@ -57,13 +60,18 @@ public final class SystemInfo {
   }
 
   public static SystemInfo getSingletonObj() {
-    if (singletonObj == null) {
-      synchronized (SystemInfo.class) {
-        if (singletonObj == null) {
-          singletonObj = new SystemInfo();
-        }
+    try {
+      if (SystemInfo.singletonObj == null) {
+        throw new CustomExceptions(
+          ErrorCode.missSystemInfo, 
+          String.format("Missing SystemInfo in Peer")
+        );
       }
-    }
+    } 
+    catch(CustomExceptions e) {
+			System.out.println(e);
+		}
+
     return singletonObj;
   }
 
@@ -80,8 +88,8 @@ public final class SystemInfo {
       this.preferN = Integer.parseInt(SystemInfoList.get(0));
       this.unChokingInr = Integer.parseInt(SystemInfoList.get(1));
       this.optUnchokingInr = Integer.parseInt(SystemInfoList.get(2));
-      this.targetFileName = SystemInfoList.get(3);
-      this.targetFileSize = Integer.parseInt(SystemInfoList.get(4));
+      this.fileName = SystemInfoList.get(3);
+      this.fileSize = Integer.parseInt(SystemInfoList.get(4));
       this.filePieceSize = Integer.parseInt(SystemInfoList.get(5));
     }
     catch(Exception e) {
@@ -115,15 +123,15 @@ public final class SystemInfo {
     return this.optUnchokingInr;
   }
 
-  public String getTargetFileName() {
-    return this.targetFileName;
+  public String getFileName() {
+    return this.fileName;
   }
 
-  public int getTargetFileSize() {
-    return this.targetFileSize;
+  public int getFileSize() {
+    return this.fileSize;
   }
 
-  public int getFilePieceSize() {
+  public int getPieceSize() {
     return this.filePieceSize;
   }
 
