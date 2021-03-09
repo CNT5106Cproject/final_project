@@ -48,7 +48,8 @@ public class PeerProcess {
 				}
 			}
 			fileReader.close();
-
+			
+			/** Set up peer's host info and neighbor list */
 			SystemInfo s = new SystemInfo(hostPeer, neighborList);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -69,6 +70,8 @@ public class PeerProcess {
 				infoList.add(infos[1]);
 			}
 			fileReader.close();
+			
+			/** Set up peer's system parameters */
 			SystemInfo s = new SystemInfo(infoList);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -87,12 +90,21 @@ public class PeerProcess {
 			readPeerInfo(args[0], true);
 			readCommon(args[0]);
 
-			SystemInfo s = SystemInfo.getSingletonObj();
-			Peer hostPeer = s.getHostPeer();
-			/* Set peer logger */
+			/** Get peer's system parameter */
+			SystemInfo sysInfo = SystemInfo.getSingletonObj();
+			
+			/** Set up peer's logger */
 			LogHandler logging = new LogHandler();
 			logging.logSystemParam();
 			logging.logEstablishPeer();
+
+			/** Set up peer's file manager */
+			FileManager fm = FileManager.getInstance(
+				sysInfo.getFileName(),
+				"rw",
+				sysInfo.getFileSize(),
+				sysInfo.getPieceSize()
+			);
 
       /* Start peer server thread -> inside we create Handler to handle sockets */
 			Server server = new Server();
@@ -100,7 +112,7 @@ public class PeerProcess {
 
 			/* Start building client threads for other target hosts */
 			logging.writeLog("Start client connections");
-			List<Peer> neighborList = s.getPeerList();
+			List<Peer> neighborList = sysInfo.getPeerList();
 			for(int i=0; i < neighborList.size(); i++) {
 				Client client = new Client(neighborList.get(i));
 				Thread t = new Thread(client);
