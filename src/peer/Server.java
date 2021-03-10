@@ -61,18 +61,24 @@ public class Server extends Thread{
 		private ObjectInputStream in;	//stream read from the socket
     private ObjectOutputStream out;    //stream write to the socket
 		private int no;		//The index number of the client
+		private HandShake handShake;
+		private String clientPeerID;
 		
     public Handler(Socket connection, int no) {
       this.connection = connection;
 	    this.no = no;
+			this.handShake = null;
+			this.clientPeerID = null;
     }
 
     public void run() {
+			
  			try {
 			//initialize Input and Output streams
 				out = new ObjectOutputStream(connection.getOutputStream());
 				out.flush();
 				in = new ObjectInputStream(connection.getInputStream());
+
 				try {
 					while(true) {
 						//receive the message sent from the client
@@ -81,16 +87,16 @@ public class Server extends Thread{
 						logging.writeLog(String.format("Receive msg from client #%s, msg: %s", no, message));
 						
 						// Capitalize all letters in the message
-						MESSAGE = message.toUpperCase();
+						MESSAGE = message;
 						sendMessage(MESSAGE);
 					}
 				}
-				catch(ClassNotFoundException classnot){
-					System.err.println("Data received in unknown format");
+				catch(ClassNotFoundException e){
+					logging.writeLog("severe", "Server buffer stream exception, ex:" + e);
 				}
 			}
-			catch(IOException ioException){
-				System.out.println("Disconnect with Client " + no);
+			catch(IOException e){
+				logging.writeLog("severe", "Server thread IO exception, ex:" + e);
 			}
 			finally {
 			// Close connections
@@ -99,8 +105,8 @@ public class Server extends Thread{
 					out.close();
 					connection.close();
 				}
-				catch(IOException ioException){
-					System.out.println("Disconnect with Client " + no);
+				catch(IOException e){
+					logging.writeLog("severe", "close Server connection failed, ex:" + e);
 				}
 			}
 		}
@@ -110,10 +116,9 @@ public class Server extends Thread{
 			try{
 				out.writeObject(msg);
 				out.flush();
-				// System.out.println("Send message: " + msg + " to Client " + no);
 			}
 			catch(IOException ioException){
-				ioException.printStackTrace();
+				logging.writeLog("severe", "client send message failed, ex:" + ioException);
 			}
 		}
   }

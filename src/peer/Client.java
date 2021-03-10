@@ -7,7 +7,10 @@ import java.nio.channels.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import utils.CustomExceptions;
+import utils.ErrorCode;
 import utils.LogHandler;
+import utils.Tools;
 
 public class Client extends Peer implements Runnable {
 
@@ -22,87 +25,108 @@ public class Client extends Peer implements Runnable {
 
 	private static LogHandler logging = new LogHandler();
 	private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
+	private static FileManager fm = FileManager.getInstance();
+	private HandShake handShake;
 
 	/**
-	 * Create connection to target host: targetPort
-	 * 
+	 * Create connection to target host: targetPort.
+	 * Which store in Peer object
 	 * @param targetHostPeer
 	 */
 	public Client(Peer targetHostPeer) {
 		this.clientPeer = sysInfo.getHostPeer();
 		this.targetHostPeer = targetHostPeer;
 		this.tryToConnect = true;
-	}
+		this.handShake = null;
 
-	private void createSocket() {
-		try {
-			requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
-			logging.logStartConn(clientPeer, targetHostPeer);
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		logging.writeLog("Create Client thread, target peer - " + this.targetHostPeer.getId());
 	}
 
 	public void run() {
 		try {
-			// create a socket to connect to the server
-			if (tryToConnect) {
-				createSocket();
-			}
+			while(!fm.isComplete()) {
+				try {
+					// create a socket to connect to the server
+					if (tryToConnect) {
+						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
+						logging.logStartConn(clientPeer, targetHostPeer);
+					}
+					/** 
+					 * Disable tryToConnect
+					 * Initialize inputStream and outputStream
+					*/
+					tryToConnect = false;
+					out = new ObjectOutputStream(requestSocket.getOutputStream());
+					out.flush();
+					in = new ObjectInputStream(requestSocket.getInputStream());
+					
+					/**
+					 * this.handShake is null for not been handshake before
+					 * - Send handshake MSG
+					 * - Validate handShake response
+					*/
+					if(this.handShake == null) {
+						this.handShake = new HandShake(targetHostPeer);
+					}
+					
+					int retryHandShake = 0;
+					while(retryHandShake < sysInfo.getRetryLimit()) {
+						out.writeObject(this.handShake.toString());
+						this.handShake.SendHandShake(out);
+						//this.handShake.ReceiveHandShake(in);
+						String MESSAGE = (String) in.readObject();
+						logging.writeLog(String.format("Receive msg from target host [%s], msg: %s", 
+							targetHostPeer.getId(),
+							MESSAGE
+						));
+						if(MESSAGE != null) {
+							this.handShake.setSuccess();
+						}
+						if(this.handShake.isSuccess()) {
+							break;
+						}
+						logging.writeLog(
+							"warning", 
+							String.format("Handshake with [%s] failed, start retry %s", targetHostPeer.getId(), retryHandShake)
+						);
+						Tools.timeSleep(sysInfo.getRetryInterval());
+						retryHandShake++;
+					}
 
-			/** 
-			 * Handshake and disable tryToConnect
-			*/
-			tryToConnect = false;
-			
-			// initialize inputStream and outputStream
-			out = new ObjectOutputStream(requestSocket.getOutputStream());
-			out.flush();
-			in = new ObjectInputStream(requestSocket.getInputStream());
-			// TODO Handshake
-			message = String.format("I am node: %s, nice to meet you!", targetHostPeer.getId());
-			sendMessage(message);
-
-			while (true) {
-				// Receive the upperCase sentence from the server
-				MESSAGE = (String) in.readObject();
-				// show the message to the user
-				logging.writeLog(String.format("Receive msg from target host [%s], msg: %s", 
-					targetHostPeer.getId(),
-					MESSAGE
-				));
+					if(!this.handShake.isSuccess()) {
+						throw new CustomExceptions(
+							ErrorCode.failHandshake, 
+							String.format("Handshake failed between Peer [%s] to Peer [%s] ", sysInfo.getHostPeer(), this.targetHostPeer)
+						);
+					}
+					
+					logging.writeLog("Handshake Success, start file transport process");
+					// while(true){
+					// 	// Receive the upperCase sentence from the server
+					// 	MESSAGE = (String) in.readObject();
+					// 	// show the message to the user
+					// 	logging.writeLog(String.format("Receive msg from target host [%s], msg: %s", 
+					// 		targetHostPeer.getId(),
+					// 		MESSAGE
+					// 	));
+					// }
+				}
+				catch (ConnectException e) {
+					logging.logConnError(clientPeer, targetHostPeer);
+					Tools.timeSleep(sysInfo.getRetryInterval());
+					tryToConnect = true;
+					this.handShake = null;
+					// reconnected
+				}
 			}
-		} catch (ConnectException e) {
-			logging.logConnError(clientPeer, targetHostPeer);
-			try {
-				TimeUnit.SECONDS.sleep(sysInfo.getRetryInterval());
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
-			}
-			tryToConnect = true;
-		} 
-		catch (ClassNotFoundException e) {
-			String msg = String.format(
-				"Read Buffer occurs ClassNotFoundException in connection with [%s], ex: [%s]", 
-				targetHostPeer.getId(),
-				e
-			);
-      logging.writeLog("severe", msg);
-    } 
-		catch(UnknownHostException unknownHost){
-			String msg = "Connecting to invalid host";
-			logging.writeLog("severe", msg + ", ex: " + unknownHost);
 		}
-		catch(IOException e){
+		catch(Exception e){
 			String msg = String.format(
-				"IOException occurs in connection with [%s], ex: [%s]", 
+				"Exception occurs in connection with [%s], ex: [%s]", 
 				targetHostPeer.getId(), 
 				e.getMessage()
 			);
 			logging.writeLog("severe", msg);
-			tryToConnect = true;
 		}
 		finally{
 			// Close connections
@@ -111,23 +135,21 @@ public class Client extends Peer implements Runnable {
 				out.close();
 				requestSocket.close();
 			}
-			catch(IOException ioException){
-				ioException.printStackTrace();
-				
+			catch(IOException e){
+				logging.writeLog("severe", "close connection failed, ex:" + e);
 			}
 		}
 	}
 
 	//send a message to the output stream
-	void sendMessage(String msg)
-	{
-		try{
+	void sendMessage(String msg) {
+		try {
 			//stream write the message
 			out.writeObject(msg);
 			out.flush();
 		}
 		catch(IOException ioException){
-			ioException.printStackTrace();
+			logging.writeLog("severe", "client send message failed, ex:" + ioException);
 		}
 	}
 	
