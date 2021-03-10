@@ -112,7 +112,7 @@ public class HandShake implements Serializable {
 		ObjectOutputStream opStream = new ObjectOutputStream(out);
 		opStream.writeObject(this);
 		opStream.flush();
-		logging.writeLog(String.format("Sending handshake message to peer [%s]", this.targetPeerID));
+		logging.logSendHandShakeMsg(this.targetPeerID);
 	}
 
 	/**
@@ -125,13 +125,16 @@ public class HandShake implements Serializable {
 		try {
 			ObjectInputStream ipStream = new ObjectInputStream(in);
 			HandShake Response = (HandShake) ipStream.readObject();
-			// 1.TODO checkHeader
+			// 1. TODO checkHeader
 			// 2. TODO check the its from the neighbor
 			// 3. Set the success flag to true after passing the tests above
-			//    call setSuccess();
-			
+			setSuccess();
 			return Response != null ? Response.peerID : null;
-		} catch (Exception e) {
+		} 
+		catch(ClassNotFoundException e){
+			logging.writeLog("severe", "read input stream exception, ex:" + e);
+		}
+		catch (Exception e) {
 			logging.writeLog("severe", String.format("Error, Receive handshake from [%s]", this.targetPeerID));
 			System.out.println(e);
 		}
@@ -155,7 +158,7 @@ public class HandShake implements Serializable {
 	 * Passing checkList.
 	 * The handshake is success.
 	 */
-	public void setSuccess() {
+	private void setSuccess() {
 		this.success = true;
 	}
 
