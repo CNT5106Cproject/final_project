@@ -167,7 +167,7 @@ public class HandShake implements Serializable {
 	 * The handshake is success.
 	 */
 	private void setSuccess() {
-		if(checkHeader()==true && checkPeerId(peerID)==true) {
+		if(checkHeader()==true && checkPeerId(peerID)==true && isNeighbor(PeerID)==true) {
 			this.success = true;
 		}
 	}
