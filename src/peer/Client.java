@@ -5,83 +5,151 @@ import java.io.*;
 import java.nio.*;
 import java.nio.channels.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
-public class Client {
-	Socket requestSocket;           //socket connect to the server
-	ObjectOutputStream out;         //stream write to the socket
- 	ObjectInputStream in;          //stream read from the socket
-	String message;                //message send to the server
-	String MESSAGE;                //capitalized message read from the server
+import utils.CustomExceptions;
+import utils.ErrorCode;
+import utils.LogHandler;
+import utils.Tools;
 
-	public void Client() {}
+public class Client extends Peer implements Runnable {
 
-	void run()
-	{
-		try{
-			//create a socket to connect to the server
-			requestSocket = new Socket("localhost", 8000);
-			System.out.println("Connected to localhost in port 8000");
-			//initialize inputStream and outputStream
-			out = new ObjectOutputStream(requestSocket.getOutputStream());
-			out.flush();
-			in = new ObjectInputStream(requestSocket.getInputStream());
-			
-			//get Input from standard input
-			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
-			while(true)
-			{
-				System.out.print("Hello, please input a sentence: ");
-				//read a sentence from the standard input
-				message = bufferedReader.readLine();
-				//Send the sentence to the server
-				sendMessage(message);
-				//Receive the upperCase sentence from the server
-				MESSAGE = (String)in.readObject();
-				//show the message to the user
-				System.out.println("Receive message: " + MESSAGE);
+	private Peer clientPeer;
+	private Peer targetHostPeer;
+	private Socket requestSocket; // socket connect to the server
+	private boolean tryToConnect;
+	private ObjectOutputStream out; // stream write to the socket
+	private ObjectInputStream in; // stream read from the socket
+	private String message; // message send to the server
+	private String MESSAGE; // capitalized message read from the server
+
+	private static LogHandler logging = new LogHandler();
+	private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
+	private static FileManager fm = FileManager.getInstance();
+	private HandShake handShake;
+
+	/**
+	 * Create connection to target host: targetPort.
+	 * Which store in Peer object
+	 * @param targetHostPeer
+	 */
+	public Client(Peer targetHostPeer) {
+		this.clientPeer = sysInfo.getHostPeer();
+		this.targetHostPeer = targetHostPeer;
+		this.tryToConnect = true;
+		this.handShake = null;
+
+		logging.writeLog("Create Client thread, target peer - " + this.targetHostPeer.getId());
+	}
+
+	public void run() {
+		try {
+			while(fm != null && !fm.isComplete()) {
+				try {
+					// create a socket to connect to the server
+					if (tryToConnect) {
+						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
+						logging.logStartConn(clientPeer, targetHostPeer);
+					}
+					/** 
+					 * Disable tryToConnect
+					 * Initialize inputStream and outputStream
+					*/
+					tryToConnect = false;
+					out = new ObjectOutputStream(requestSocket.getOutputStream());
+					out.flush();
+					in = new ObjectInputStream(requestSocket.getInputStream());
+					
+					/**
+					 * this.handShake is null for not been handshake before
+					 * - Send handshake MSG
+					 * - Validate handShake response
+					*/
+					if(this.handShake == null) {
+						this.handShake = new HandShake(targetHostPeer);
+					}
+					
+					int retryHandShake = 0;
+					while(retryHandShake < sysInfo.getRetryLimit()) {
+						this.handShake.SendHandShake(out);
+						this.handShake.ReceiveHandShake(in);
+						
+						if(this.handShake.isSuccess()) {
+							break;
+						}
+						logging.writeLog(
+							"warning", 
+							String.format("Handshake with [%s] failed, start retry %s", targetHostPeer.getId(), retryHandShake)
+						);
+						Tools.timeSleep(sysInfo.getRetryInterval());
+						retryHandShake++;
+					}
+
+					if(!this.handShake.isSuccess()) {
+						throw new CustomExceptions(
+							ErrorCode.failHandshake, 
+							String.format("Handshake failed between Peer [%s] to Peer [%s] ", sysInfo.getHostPeer(), this.targetHostPeer)
+						);
+					}
+					
+					logging.writeLog("Handshake Success, Receiving file process start");
+					while(true){
+						// Receive the upperCase sentence from the server
+						MESSAGE = (String) in.readObject();
+						// show the message to the user
+						logging.writeLog(String.format("Receive msg from target host [%s], msg: %s", 
+							targetHostPeer.getId(),
+							MESSAGE
+						));
+					}
+				}
+				catch (ConnectException e) {
+					logging.logConnError(clientPeer, targetHostPeer);
+					// recreate socket after time delay
+					Tools.timeSleep(sysInfo.getRetryInterval());
+					tryToConnect = true;
+					this.handShake = null;
+				}
 			}
 		}
-		catch (ConnectException e) {
-    			System.err.println("Connection refused. You need to initiate a server first.");
-		} 
-		catch ( ClassNotFoundException e ) {
-            		System.err.println("Class not found");
-        	} 
-		catch(UnknownHostException unknownHost){
-			System.err.println("You are trying to connect to an unknown host!");
-		}
-		catch(IOException ioException){
-			ioException.printStackTrace();
+		catch(Exception e){
+			String msg = String.format(
+				"Exception occurs in connection with [%s], ex: [%s]", 
+				targetHostPeer.getId(), 
+				e.getMessage()
+			);
+			logging.writeLog("severe", msg);
 		}
 		finally{
-			//Close connections
+			// Close connections
 			try{
 				in.close();
 				out.close();
 				requestSocket.close();
 			}
-			catch(IOException ioException){
-				ioException.printStackTrace();
+			catch(IOException e){
+				logging.writeLog("severe", "Client close connection failed, ex:" + e);
 			}
 		}
 	}
+
 	//send a message to the output stream
-	void sendMessage(String msg)
-	{
-		try{
+	void sendMessage(String msg) {
+		try {
 			//stream write the message
 			out.writeObject(msg);
 			out.flush();
 		}
 		catch(IOException ioException){
-			ioException.printStackTrace();
+			logging.writeLog("severe", "client send message failed, ex:" + ioException);
 		}
 	}
-	//main method
-	public static void main(String args[])
-	{
-		Client client = new Client();
-		client.run();
-	}
+	
+	/**
+	 * 
+	 * @param args
+	 */
+	public static void main(String args[]) {
 
+	}
 }
