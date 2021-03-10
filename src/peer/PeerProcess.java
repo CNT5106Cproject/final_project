@@ -99,6 +99,9 @@ public class PeerProcess {
 			logging.logEstablishPeer();
 
 			/** Set up peer's file manager */
+
+			// TODO 
+			// 1. Check file exist and hasFile flag
 			FileManager fm = FileManager.getInstance(
 				sysInfo.getFileName(),
 				"rw",

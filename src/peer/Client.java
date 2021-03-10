@@ -44,7 +44,7 @@ public class Client extends Peer implements Runnable {
 
 	public void run() {
 		try {
-			while(!fm.isComplete()) {
+			while(fm != null && !fm.isComplete()) {
 				try {
 					// create a socket to connect to the server
 					if (tryToConnect) {
