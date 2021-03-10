@@ -141,25 +141,35 @@ public class HandShake implements Serializable {
 		return null;
 	}
 
+	public boolean checkHeader() {
 
-	// public boolean checkHeader() {
+		if(peerMsgHeader!= "P2PFILESHARINGPROJ"){
 
-	// }
+			System.out.println("Header is wrong");
+		}else{
+			return true;}
+	}
 
 	// public boolean checkPeerId(msgPeerId) {
 	// 	Peer p = SystemInfo.getSingletonObj().getHostPeer();
 	// }
 
-	// public boolean isNeighbor(peerId) {
+	public boolean isNeighbor(String PeerID) {
 
-	// }
+		if(peerID == targetPeerID){
+			return true;
+		}else return false;
+
+    }
 	
 	/**
 	 * Passing checkList.
 	 * The handshake is success.
 	 */
 	private void setSuccess() {
-		this.success = true;
+		if(checkHeader()==true && checkPeerId(peerID)==true) {
+			this.success = true;
+		}
 	}
 
 	/**
