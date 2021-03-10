@@ -34,7 +34,7 @@ public class Server extends Thread{
 					// System.out.println("Client "  + clientNum + " is connected!");
 					
 					logging.writeLog(String.format(
-						"# %s client is connected, prepare to handshake",
+						"# %s client is connected",
 						clientNum
 					));
 					clientNum++;
@@ -61,23 +61,31 @@ public class Server extends Thread{
 		private ObjectInputStream in;	//stream read from the socket
     private ObjectOutputStream out;    //stream write to the socket
 		private int no;		//The index number of the client
+		
 		private HandShake handShake;
 		private String clientPeerID;
 		
     public Handler(Socket connection, int no) {
       this.connection = connection;
 	    this.no = no;
-			this.handShake = null;
 			this.clientPeerID = null;
+			this.handShake = null;
     }
 
     public void run() {
-			
  			try {
-			//initialize Input and Output streams
+				//initialize Input and Output streams
 				out = new ObjectOutputStream(connection.getOutputStream());
 				out.flush();
 				in = new ObjectInputStream(connection.getInputStream());
+				
+				if(this.handShake == null) {
+					this.handShake = new HandShake();
+				}
+				while(!handShake.isSuccess()) {
+					// waiting for hand shake message
+					this.handShake.ReceiveHandShake(in);
+				}
 
 				try {
 					while(true) {
@@ -87,12 +95,12 @@ public class Server extends Thread{
 						logging.writeLog(String.format("Receive msg from client #%s, msg: %s", no, message));
 						
 						// Capitalize all letters in the message
-						MESSAGE = message;
+						MESSAGE = message.toUpperCase();
 						sendMessage(MESSAGE);
 					}
 				}
 				catch(ClassNotFoundException e){
-					logging.writeLog("severe", "Server buffer stream exception, ex:" + e);
+					logging.writeLog("severe", "Server read input stream exception, ex:" + e);
 				}
 			}
 			catch(IOException e){
@@ -104,9 +112,10 @@ public class Server extends Thread{
 					in.close();
 					out.close();
 					connection.close();
+					logging.logCloseConn(this.clientPeerID);
 				}
 				catch(IOException e){
-					logging.writeLog("severe", "close Server connection failed, ex:" + e);
+					logging.writeLog("severe", "Server close connection failed, ex:" + e);
 				}
 			}
 		}

@@ -71,17 +71,9 @@ public class Client extends Peer implements Runnable {
 					
 					int retryHandShake = 0;
 					while(retryHandShake < sysInfo.getRetryLimit()) {
-						out.writeObject(this.handShake.toString());
 						this.handShake.SendHandShake(out);
-						//this.handShake.ReceiveHandShake(in);
-						String MESSAGE = (String) in.readObject();
-						logging.writeLog(String.format("Receive msg from target host [%s], msg: %s", 
-							targetHostPeer.getId(),
-							MESSAGE
-						));
-						if(MESSAGE != null) {
-							this.handShake.setSuccess();
-						}
+						this.handShake.ReceiveHandShake(in);
+						
 						if(this.handShake.isSuccess()) {
 							break;
 						}
@@ -100,23 +92,23 @@ public class Client extends Peer implements Runnable {
 						);
 					}
 					
-					logging.writeLog("Handshake Success, start file transport process");
-					// while(true){
-					// 	// Receive the upperCase sentence from the server
-					// 	MESSAGE = (String) in.readObject();
-					// 	// show the message to the user
-					// 	logging.writeLog(String.format("Receive msg from target host [%s], msg: %s", 
-					// 		targetHostPeer.getId(),
-					// 		MESSAGE
-					// 	));
-					// }
+					logging.writeLog("Handshake Success, Receiving file process start");
+					while(true){
+						// Receive the upperCase sentence from the server
+						MESSAGE = (String) in.readObject();
+						// show the message to the user
+						logging.writeLog(String.format("Receive msg from target host [%s], msg: %s", 
+							targetHostPeer.getId(),
+							MESSAGE
+						));
+					}
 				}
 				catch (ConnectException e) {
 					logging.logConnError(clientPeer, targetHostPeer);
+					// recreate socket after time delay
 					Tools.timeSleep(sysInfo.getRetryInterval());
 					tryToConnect = true;
 					this.handShake = null;
-					// reconnected
 				}
 			}
 		}
@@ -136,7 +128,7 @@ public class Client extends Peer implements Runnable {
 				requestSocket.close();
 			}
 			catch(IOException e){
-				logging.writeLog("severe", "close connection failed, ex:" + e);
+				logging.writeLog("severe", "Client close connection failed, ex:" + e);
 			}
 		}
 	}
