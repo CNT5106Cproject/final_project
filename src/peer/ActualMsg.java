@@ -1,12 +1,15 @@
 package peer;
 
 import java.io.*;
+
+import utils.LogHandler;
 // ActualMsg always have 4 objects for 4 types of message
 // It will not be the object it created at the begining after recv()
 // but it doesn't matter.
 // 
 // This class is not thread-safe
 public class ActualMsg{
+	Peer targetPeer; // communicate target peer
 	// pretend to be enum
 	public static byte CHOKE = 0;
 	public static byte UNCHOKE = 1;
@@ -27,6 +30,13 @@ public class ActualMsg{
 	private BitfieldMsg bitfieldMsg = new BitfieldMsg();
 	// piece have a 4 bytes blockIdx and variable length of data
 	private PieceMsg pieceMsg = new PieceMsg();
+
+	private static LogHandler logging = new LogHandler();
+	
+	ActualMsg(Peer targetPeer) {
+		this.targetPeer = targetPeer;
+	}
+
 	/**
 	 * send() for 
 	 * (1) CHOKE UNCHOKE INTERESTED NOTINTERESTED
@@ -121,10 +131,13 @@ public class ActualMsg{
 				PieceMsg pieceMsg = (PieceMsg) msg;
 				this.pieceMsg = pieceMsg;
 			}
+			logging.writeLog(
+				String.format("Receive msg from peer [%s], type: [%s]", this.targetPeer.getId(),type),
+			);
 			return type;
 		}
 		catch(ClassNotFoundException e){
-			System.out.println("class not found");
+			logging.writeLog("severe", "read input stream exception, ex:" + e);
 		}
 		return -1;
 	}

@@ -49,6 +49,9 @@ public class Server extends Thread{
 		}
 	}
 
+	private static class ChokingMechanism extends Thread {
+
+	}
 
 	/**
 	* A handler thread class.  Handlers are spawned from the listening
@@ -63,13 +66,15 @@ public class Server extends Thread{
 		private int no;		//The index number of the client
 		
 		private HandShake handShake;
-		private String clientPeerID;
-		
+		private Peer client;
+		private ActualMsg actMsg;
+
     public Handler(Socket connection, int no) {
       this.connection = connection;
 	    this.no = no;
-			this.clientPeerID = null;
+			this.client = null;
 			this.handShake = null;
+			this.actMsg = null;
     }
 
     public void run() {
@@ -82,25 +87,19 @@ public class Server extends Thread{
 				if(this.handShake == null) {
 					this.handShake = new HandShake();
 				}
+				
+				String getClientId = null;
 				while(!handShake.isSuccess()) {
 					// waiting for hand shake message
-					this.handShake.ReceiveHandShake(in);
+					getClientId = this.handShake.ReceiveHandShake(in);
 				}
 
-				try {
-					while(true) {
-						//receive the message sent from the client
-						message = (String)in.readObject();
-						// show the message to the user
-						logging.writeLog(String.format("Receive msg from client #%s, msg: %s", no, message));
-						
-						// Capitalize all letters in the message
-						MESSAGE = message.toUpperCase();
-						sendMessage(MESSAGE);
-					}
-				}
-				catch(ClassNotFoundException e){
-					logging.writeLog("severe", "Server read input stream exception, ex:" + e);
+				this.client = new Peer(getClientId, null, null, null);
+				this.actMsg = new ActualMsg(this.client);
+				
+				// start receiving message from client
+				while(true) {
+					actMsg.recv(in);
 				}
 			}
 			catch(IOException e){
@@ -112,7 +111,7 @@ public class Server extends Thread{
 					in.close();
 					out.close();
 					connection.close();
-					logging.logCloseConn(this.clientPeerID);
+					logging.logCloseConn(this.client);
 				}
 				catch(IOException e){
 					logging.writeLog("severe", "Server close connection failed, ex:" + e);
