@@ -14,9 +14,24 @@
 6.FileManager (Jim)
 7.LogHandler (YiMing)
 
+## 6. FileManager
+- LogHandler is a singleton,  define it in the class initial variable.
+  Then you are able to call it's functions shown in the function list.
+
+| Function Names | input |  return | description  |
+| ------------- | ------------- | ----------- | ------- | 
+| insertBitfield  | (int peerId, byte[] b, int len) | None | record what peices does others have |
+| updateHave | (String peerId, int blockIdx) | None | update peer's have peices |
+| isComplete | | None | is peer finishing download the file |
+| pickInterestedFileBlock | (String peerId) | int blockIdx | random pick a interested block which the other peer (peerId) have |
+| read | (int blockIdx, byte[] b, int len) | int byteRead | read the block, return the length of bytes which just be read |
+| write | (int blockIdx, byte[] b, int len) | int byteWrite | write the block, return the lenght of bytes which just be written |
+| close | | None | close the file |
+
 ## 7. LogHandler
-LogHandler is a singleton, just define in the class initial variable.
-And you are able to call it's functions shown as below.
+- LogHandler is a singleton,  define it in the class initial variable.
+  Then you are able to call it's functions shown in the function list.
+  
   ```
     LogHandler logging = new LogHandler();
     ...
