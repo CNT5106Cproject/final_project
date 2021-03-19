@@ -16,7 +16,7 @@ public class FileManager {
 	private RandomAccessFile file;
 	private final HashSet<Integer> interested = new HashSet<Integer>();
 	private final HashSet<Integer> downloading = new HashSet<Integer>();
-	private final HashMap<Integer, HashSet<Integer>> otherPeerHave = new HashMap<Integer, HashSet<Integer>>();
+	private final HashMap<String, HashSet<Integer>> otherPeerHave = new HashMap<String, HashSet<Integer>>();
 	private byte[] ownBitfield;
 
 	public static byte[] bitFlag = {
@@ -154,7 +154,7 @@ public class FileManager {
 	 * @param      b       bitfield
 	 * @param      len     length of b
 	 */
-	public void insertBitfield(int peerId, byte[] b, int len){
+	public void insertBitfield(String peerId, byte[] b, int len){
 		int blockIdx = 0;
 		HashSet<Integer> have = new HashSet<Integer>();
 		for(int i = 0; i < len && blockIdx < this.blockNum; i++){
@@ -176,7 +176,7 @@ public class FileManager {
 	 * @param      peerId    The peer id
 	 * @param      blockIdx  The block index peerId updated
 	 */
-	public void updateHave(int peerId, int blockIdx){
+	public void updateHave(String peerId, int blockIdx){
 		HashSet<Integer> have = this.otherPeerHave.get(peerId);
 		if(have == null) {
 			System.err.println("FileManager updateHave: no such peerId");
@@ -193,6 +193,20 @@ public class FileManager {
 		return (this.downloading.size() + this.interested.size() == 0);
 	}
 	/**
+	 * Determines whether the specified peer identifier is interested.
+	 *
+	 * @param      peerId  The peer identifier
+	 *
+	 * @return     True if the specified peer identifier is interested, False otherwise.
+	 */
+	public synchronized boolean isInterested(String peerId){
+		if(this.interested.size() == 0) return false;
+		ArrayList<Integer> interested = new ArrayList<Integer>(this.interested);
+		// get intersection of interested and have
+		interested.retainAll(this.otherPeerHave.get(peerId));
+		return (interested.size() != 0);
+	}
+	/**
 	 * select interested file block from peerId "have" set and move selected 
 	 * block index from "interested" to "downloading" set
 	 *
@@ -200,7 +214,7 @@ public class FileManager {
 	 *
 	 * @return     -1 when not interested, otherwise return interested block index.
 	 */
-	public synchronized int pickInterestedFileBlock(int peerId){
+	public synchronized int pickInterestedFileBlock(String peerId){
 		if(this.interested.size() == 0) return -1;
 		ArrayList<Integer> interested = new ArrayList<Integer>(this.interested);
 		// get intersection of interested and have
