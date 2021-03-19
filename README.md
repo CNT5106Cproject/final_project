@@ -22,18 +22,18 @@
 ### Block & Bit field functions
 | Function Names | input |  return | description  |
 | ------------- | ------------- | ----------- | ------- | 
-| insertBitfield  | (int peerId, byte[] b, int len) | None | record what peices does **others** have |
-| updateHave | (String peerId, int blockIdx) | None | update **others'** have peices |
+| insertBitfield  | int peerId, byte[] b, int len | None | record what peices does **others** have |
+| updateHave | String peerId, int blockIdx | None | update **others'** have peices |
 | buildOwnBitfield | int remainderBits | None | Build own bit field record in memory |
 | updateOwnBitfield | int blockIdx | None | update own bit field |
 | getOwnBitfield | | None | get own bit field |
-| pickInterestedFileBlock | (String peerId) | int blockIdx | use for request msg, random pick a interested block which the other peer (peerId) have |
+| pickInterestedFileBlock | String peerId | int blockIdx | use for request msg, random pick a interested block which the other peer (peerId) have |
 | isInterested | String peerId | boolean | interested in target Peer's blocks |
 
 ### File functions
 | Function Names | input |  return | description  |
-| read | (int blockIdx, byte[] b, int len) | int byteRead | read the block, return the length of bytes which just be read |
-| write | (int blockIdx, byte[] b, int len) | int byteWrite | write the block, return the lenght of bytes which just be written |
+| read | int blockIdx, byte[] b, int len | int byteRead | read the block, return the length of bytes which just be read |
+| write | int blockIdx, byte[] b, int len | int byteWrite | write the block, return the lenght of bytes which just be written |
 | close | | None | close the file |
 
 ### Other functions
@@ -61,7 +61,7 @@
 ---
 | Function Names | input |  return | description  |
 | ------------- | ------------- | ----------- | ------- | 
-| logStartConn  | (Peer client, Peer targetHost) | None | log start connection |
+| logStartConn  | Peer client, Peer targetHost | None | log start connection |
 | logChangePrefersPeers  | | None | log change of preferred neighbors |
 | logChangeUnchokedPeer  | | None | change of unchoke neighbors |
 | logUnchoking  | | None | log unchoke targe peer |
