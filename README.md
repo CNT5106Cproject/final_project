@@ -6,6 +6,7 @@
 
 ---
 ## Functions
+
 1.HandShakeMsg (Mayank)
 2.ActualMsg (Jim)
 3.Server (YiMing)
@@ -15,21 +16,34 @@
 7.LogHandler (YiMing)
 
 ## 6. FileManager
-- LogHandler is a singleton,  define it in the class initial variable.
+- FileManager is a singleton,  new it as the class's default variables.
   Then you are able to call it's functions shown in the function list.
 
+### Block & Bit field functions
 | Function Names | input |  return | description  |
 | ------------- | ------------- | ----------- | ------- | 
-| insertBitfield  | (int peerId, byte[] b, int len) | None | record what peices does others have |
-| updateHave | (String peerId, int blockIdx) | None | update peer's have peices |
-| isComplete | | None | is peer finishing download the file |
-| pickInterestedFileBlock | (String peerId) | int blockIdx | random pick a interested block which the other peer (peerId) have |
+| insertBitfield  | (int peerId, byte[] b, int len) | None | record what peices does **others** have |
+| updateHave | (String peerId, int blockIdx) | None | update **others'** have peices |
+| buildOwnBitfield | int remainderBits | None | Build own bit field record in memory |
+| updateOwnBitfield | int blockIdx | None | update own bit field |
+| getOwnBitfield | | None | get own bit field |
+| pickInterestedFileBlock | (String peerId) | int blockIdx | use for request msg, random pick a interested block which the other peer (peerId) have |
+| isInterested | String peerId | boolean | interested in target Peer's blocks |
+
+### File functions
+| Function Names | input |  return | description  |
 | read | (int blockIdx, byte[] b, int len) | int byteRead | read the block, return the length of bytes which just be read |
 | write | (int blockIdx, byte[] b, int len) | int byteWrite | write the block, return the lenght of bytes which just be written |
 | close | | None | close the file |
 
+### Other functions
+| Function Names | input |  return | description  |
+| isComplete | | None | is peer finishing download the file |
+| printByteArray | byte[] bytes | None | print bytes to string |
+
+
 ## 7. LogHandler
-- LogHandler is a singleton,  define it in the class initial variable.
+- LogHandler is a singleton,  new it as the class's default variables.
   Then you are able to call it's functions shown in the function list.
   
   ```
