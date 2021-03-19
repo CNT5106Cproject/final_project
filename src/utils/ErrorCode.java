@@ -13,7 +13,18 @@ public class ErrorCode {
   public static int invalidPeerID = 3001;
 
   /**
-  * Failure
+  * Missing Important Objects
+  * - Singleton object error occurs
+  */
+  public static int missSystemInfo = 4000;
+  public static int missLogHandler = 4001;
+  public static int missFileManager = 4002;
+
+  /**
+  * System error
+  * - parse error
   */
   public static int failParsePeerInfo = 5000;
+  public static int failHandshake = 5001;
+  
 }

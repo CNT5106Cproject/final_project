@@ -1,5 +1,10 @@
 package peer;
 import java.util.concurrent.locks.ReentrantLock;
+
+import utils.CustomExceptions;
+import utils.ErrorCode;
+import utils.LogHandler;
+
 import java.io.*;
 import java.util.HashSet;
 import java.util.HashMap;
@@ -31,6 +36,8 @@ public class FileManager {
 	};
 
 	private static FileManager instance = null;
+	private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
+	private static LogHandler logging = new LogHandler();
 	/**
 	 * Constructs a new instance.
 	 *
@@ -43,7 +50,6 @@ public class FileManager {
 	 */
 	private FileManager(String fileName, String mode, int fileLength, int blockSize){
 		// setup basic file info
-
 		this.mode = mode;
 		this.fileName = fileName;
 		this.fileLength = fileLength;
@@ -126,9 +132,17 @@ public class FileManager {
 	 *
 	 * @return     The instance. May return null if not initialized.
 	 */
-	public static FileManager getInstance(){
-		if(FileManager.instance == null){
-			System.err.println("FileManager getInstance: null instance");
+	public static FileManager getInstance() {
+		try {
+			if(FileManager.instance == null){
+				throw new CustomExceptions(
+					ErrorCode.missSystemInfo, 
+					String.format("Missing File Manager in Peer [%s]", sysInfo.getHostPeer())
+				);
+			}
+		}
+		catch(CustomExceptions e) {
+			logging.writeLog("severe", e.getMessage());
 		}
 		return FileManager.instance;
 	}

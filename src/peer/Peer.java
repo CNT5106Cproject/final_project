@@ -7,11 +7,11 @@ public class Peer {
   /**
    * Peer Object with all infos
    */
-  private static int peerId;
-	private static String hostName;
-	private static int port;
-  private static boolean hasFile;
-
+  private String peerId;
+	private String hostName;
+	private int port;
+  private boolean hasFile;
+  
   public Peer() {
     
 	}
@@ -23,9 +23,8 @@ public class Peer {
    * @param hasFile
    */
 	public Peer(String peerId, String hostName, String port, String hasFile) {
-    super();
     try {
-      this.peerId = Integer.parseInt(peerId);
+      this.peerId = peerId;
       this.hostName = hostName;
       this.port = Integer.parseInt(port);
       this.hasFile = Short.parseShort(hasFile) == 0 ? false : true;
@@ -33,11 +32,10 @@ public class Peer {
     catch (Exception ex) {
       String errorStr = CustomExceptions.errorResponse(ErrorCode.failParsePeerInfo, "failed to parse peerinfo");
       System.out.println(errorStr + ", ex:" + ex);
-      
 		}
 	}
 
-  public int getId() {
+  public String getId() {
 		return this.peerId;
 	}
 
