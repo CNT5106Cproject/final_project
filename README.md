@@ -51,8 +51,8 @@ d. pieceMsg
 | Function Names | input |  return | description |
 | ------------- | ------------- | ----------- | ------- | 
 | send | OutputStream out, byte type, int blockIdx | None | use for noPayloadMsg and shortMsg |
-| send | OutputStream out, byte type, byte[] bitfield | use for bitfieldMsg |
-| send | OutputStream out, byte type, int blockIdx, byte[] data | use for pieceMsg |
+| send | OutputStream out, byte type, byte[] bitfield | None | use for bitfieldMsg |
+| send | OutputStream out, byte type, int blockIdx, byte[] data | None | use for pieceMsg |
 
 ## 6. FileManager
 - FileManager is a singleton,  new it as the class's default variables.
