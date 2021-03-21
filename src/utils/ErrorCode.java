@@ -26,5 +26,6 @@ public class ErrorCode {
   */
   public static int failParsePeerInfo = 5000;
   public static int failHandshake = 5001;
-  
+  public static int invalidHandshakeHeader = 5002;
+  public static int invalidNeighbor = 5003;
 }

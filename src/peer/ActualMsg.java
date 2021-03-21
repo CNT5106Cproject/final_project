@@ -131,9 +131,7 @@ public class ActualMsg{
 				PieceMsg pieceMsg = (PieceMsg) msg;
 				this.pieceMsg = pieceMsg;
 			}
-			logging.writeLog(
-				String.format("Receive msg from peer [%s], type: [%s]", this.targetPeer.getId(),type),
-			);
+			logging.writeLog(String.format("Receive msg from peer [%s], type: [%s]", this.targetPeer.getId(), type));
 			return type;
 		}
 		catch(ClassNotFoundException e){
@@ -152,33 +150,33 @@ public class ActualMsg{
 		}
 	}
 	public static void main(String args[]) throws IOException{
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		ActualMsg sender = new ActualMsg();
-		ActualMsg recver = new ActualMsg();
-		byte[] b = {
-			(byte)0b10101010,
-			(byte)0b01010101
-		};
-		sender.send(out,ActualMsg.REQUEST, 2);
-		// sender.send(out,ActualMsg.PIECE, 2, b);
-		int type = recver.recv(new ByteArrayInputStream(out.toByteArray()));
+		// ByteArrayOutputStream out = new ByteArrayOutputStream();
+		// ActualMsg sender = new ActualMsg();
+		// ActualMsg recver = new ActualMsg();
+		// byte[] b = {
+		// 	(byte)0b10101010,
+		// 	(byte)0b01010101
+		// };
+		// sender.send(out,ActualMsg.REQUEST, 2);
+		// // sender.send(out,ActualMsg.PIECE, 2, b);
+		// int type = recver.recv(new ByteArrayInputStream(out.toByteArray()));
 
-		if(type <= ActualMsg.NOTINTERESTED){
-				System.out.println(recver.noPayloadMsg.getMsgType());
-			}
-			else if(type < ActualMsg.PIECE && type != ActualMsg.BITFIELD){
-				System.out.println(recver.shortMsg.getMsgType());
-				System.out.println(recver.shortMsg.getBlockIdx());
-			}
-			else if(type == ActualMsg.BITFIELD){
-				System.out.println(recver.bitfieldMsg.getMsgType());
-				ActualMsg.printByteArray(recver.bitfieldMsg.getBitfield());
-			}
-			else{
-				System.out.println(recver.pieceMsg.getMsgType());
-				System.out.println(recver.pieceMsg.getMsgLen());
-				ActualMsg.printByteArray(recver.pieceMsg.getData());
-			}
+		// if(type <= ActualMsg.NOTINTERESTED){
+		// 		System.out.println(recver.noPayloadMsg.getMsgType());
+		// 	}
+		// 	else if(type < ActualMsg.PIECE && type != ActualMsg.BITFIELD){
+		// 		System.out.println(recver.shortMsg.getMsgType());
+		// 		System.out.println(recver.shortMsg.getBlockIdx());
+		// 	}
+		// 	else if(type == ActualMsg.BITFIELD){
+		// 		System.out.println(recver.bitfieldMsg.getMsgType());
+		// 		ActualMsg.printByteArray(recver.bitfieldMsg.getBitfield());
+		// 	}
+		// 	else{
+		// 		System.out.println(recver.pieceMsg.getMsgType());
+		// 		System.out.println(recver.pieceMsg.getMsgLen());
+		// 		ActualMsg.printByteArray(recver.pieceMsg.getData());
+		// 	}
 
 	}
 }

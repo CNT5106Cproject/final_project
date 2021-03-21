@@ -107,14 +107,12 @@ public class Client extends Peer implements Runnable {
 					this.handShake = null;
 				}
 			}
+		}			
+		catch(CustomExceptions e){
+			logging.writeLog("severe", e.toString());
 		}
-		catch(Exception e){
-			String msg = String.format(
-				"Exception occurs in connection with [%s], ex: [%s]", 
-				targetHostPeer.getId(), 
-				e.getMessage()
-			);
-			logging.writeLog("severe", msg);
+		catch(IOException e){
+			logging.writeLog("severe", "client thread IO exception, ex:" + e);
 		}
 		finally{
 			// Close connections
