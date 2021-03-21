@@ -12,25 +12,66 @@
 4.Client (Mayank)
 5.PeerProcess (YiMing)
 6.FileManager (Jim)
-7.Logging (YiMing)
+7.LogHandler (YiMing)
 
-## 7. Logging
+## 6. FileManager
+- LogHandler is a singleton,  define it in the class initial variable.
+  Then you are able to call it's functions shown in the function list.
+
+| Function Names | input |  return | description  |
+| ------------- | ------------- | ----------- | ------- | 
+| insertBitfield  | (int peerId, byte[] b, int len) | None | record what peices does others have |
+| updateHave | (String peerId, int blockIdx) | None | update peer's have peices |
+| isComplete | | None | is peer finishing download the file |
+| pickInterestedFileBlock | (String peerId) | int blockIdx | random pick a interested block which the other peer (peerId) have |
+| read | (int blockIdx, byte[] b, int len) | int byteRead | read the block, return the length of bytes which just be read |
+| write | (int blockIdx, byte[] b, int len) | int byteWrite | write the block, return the lenght of bytes which just be written |
+| close | | None | close the file |
+
+## 7. LogHandler
+- LogHandler is a singleton,  define it in the class initial variable.
+  Then you are able to call it's functions shown in the function list.
+  
+  ```
+    LogHandler logging = new LogHandler();
+    ...
+    logging.writeLog("This is a test log");
+  ```
+
 - Please naming the functions with this rule
   ```
     log{Actions}
   ```
-- Typically, define a action function for the system in order to match the project description.
-  For example, when 
-  ```
-    LogHandler logging = new LogHandler();
-    logging.logStartConnect(client, host);
+ 
+### Project description log functions
+---
+| Function Names | input |  return | description  |
+| ------------- | ------------- | ----------- | ------- | 
+| logStartConn  | (Peer client, Peer targetHost) | None | log start connection |
+| logChangePrefersPeers  | | None | log change of preferred neighbors |
+| logChangeUnchokedPeer  | | None | change of unchoke neighbors |
+| logUnchoking  | | None | log unchoke targe peer |
+| logChoking    | | None | log choke target peer  |
+| logSendHaveMsg  | | None | log server send have msg |
+| logSendInterestMsg  | | None | log cleint send interest msg |
+| logSendNotInterestMsg  | | None | log cleint send not interest msg |
+| logDownload  | | None | log download block |
+| logCompleteFile  | | None | log complete downloading the file |
+| logCloseConn  | | None | log close connection |
+| logSendHandShakeMsg | | None | log send hand shake msg |
 
-    // Log - "Peer [%s] makes a connection to Peer [%s]"
-  ```
-  This will write down string with info lvl in the defined log file.
+### Error log functions
+---
+| Function Names | input |  return | description  |
+| ------------- | ------------- | ----------- | ------- | 
+| logConnError  | (Peer client, Peer targetHost) | None | Connection Error |
 
-- Use custom write log function to write test log.
-  ```
-    LogHandler logging = new LogHandler();
-    logging.writeLog("This is a test log");
-  ```
+### Other log functions
+---
+| Function Names | input |  return | description  |
+| ------------- | ------------- | ----------- | ------- | 
+| writeLog      | (String msg) | None | Write log to log file handler |
+| writeLog      | (String msg, Level lvl) | None | Write log to log file handler with log level |
+| logEstablishPeer | | | |
+| logStartServer | | | |
+| logStartClient | | | |

@@ -189,30 +189,41 @@ public final class LogHandler {
 
   }
   // 6. receiving ‘have’ message
-  public void logSendHaveMsg() {
-
+  public void logReceiveHaveMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘have’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
   }
   // 7. receiving ‘interested’ message
-  public void logSendInterestMsg() {
-
+  public void logReceiveInterestMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
   }
   // 8. receiving ‘not interested’ message
-  public void logSendNotInterestMsg() {
-
+  public void logReceiveNotInterestMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
   }
   // 9. downloading a piece
-  public void logDownload() {
-
+  public void logDownload(Peer sender, int blockIdx, int numBlocks) {
+    String msg = String.format(
+      "Peer [%s] has downloaded the piece [%s] from [%s]. Now the number of pieces it has is [%s]", 
+      sysInfo.getHostPeer().getId(), 
+      blockIdx,
+      sender.getId(),
+      numBlocks
+    );
+    logger.info(msg);
   }
   // 10. completion of download
   public void logCompleteFile() {
-
+    String msg = String.format("Peer [%s] has downloaded the complete file.  ", sysInfo.getHostPeer().getId());
+    logger.info(msg);
   }
   
-  public void logCloseConn(String targetPeerID) {
+  public void logCloseConn(Peer targetPeer) {
     String msg = String.format("Peer [%s] close connection with Peer [%s]", 
       sysInfo.getHostPeer().getId(), 
-      targetPeerID
+      targetPeer.getId()
     );
     logger.info(msg);
   }
@@ -220,5 +231,9 @@ public final class LogHandler {
   public void logSendHandShakeMsg(String targetPeerID) {
     logger.info(String.format("Sending handshake message to peer [%s]", targetPeerID));
   }
-  
+
+  public void logReceiveHandShakeMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘handshake’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
 }
