@@ -132,8 +132,10 @@ public class ActualMsg{
 				this.pieceMsg = pieceMsg;
 			}
 			logging.writeLog(
-				String.format("Receive msg from peer [%s], type: [%s]", this.targetPeer.getId(),type),
-			);
+				String.format("Receive msg from peer [%s], type: [%s]", 
+				this.targetPeer.getId(),
+				type
+			));
 			return type;
 		}
 		catch(ClassNotFoundException e){
