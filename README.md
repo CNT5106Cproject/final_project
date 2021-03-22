@@ -71,12 +71,14 @@ d. pieceMsg
 
 ### File functions
 | Function Names | input |  return | description  |
+| ------------- | ------------- | ----------- | ------- | 
 | read | int blockIdx, byte[] b, int len | int byteRead | read the block, return the length of bytes which just be read |
 | write | int blockIdx, byte[] b, int len | int byteWrite | write the block, return the lenght of bytes which just be written |
 | close | | None | close the file |
 
 ### Other functions
 | Function Names | input |  return | description  |
+| ------------- | ------------- | ----------- | ------- | 
 | isComplete | | None | is peer finishing download the file |
 | printByteArray | byte[] bytes | None | print bytes to string |
 
