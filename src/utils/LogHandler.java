@@ -6,6 +6,9 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+
+import javax.sound.midi.Receiver;
+
 import java.util.Date;
 import java.util.logging.FileHandler;
 import java.util.logging.Filter;
@@ -147,12 +150,21 @@ public final class LogHandler {
     );
     logger.fine(msg);
   }
+
+  public void logHandShakeSuccess(Peer sender, Peer recv) {
+    String msg = String.format(
+      "Peer [%s] set up handshake with [%s] SUCCESS", 
+      sender.getId(), 
+      recv.getId()
+    );
+    logger.fine(msg);
+  }
   
   /**
   * Peer action errors
   */
   public void logConnError(Peer client, Peer targetHost) {
-    String msg = String.format("Peer [%s] occurs connection error with Peer [%s], Start retry in [%s] sec", 
+    String msg = String.format("Peer [%s] occurs connection ERROR with Peer [%s], Start retry in [%s] sec", 
       client.getId(), 
       targetHost.getId(),
       sysInfo.getRetryInterval()

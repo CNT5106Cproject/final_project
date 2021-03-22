@@ -31,7 +31,7 @@ public class Server extends Thread{
 			try {
 				int clientNum = 1;
 				while(true) {
-					new Handler(listener.accept(),clientNum).start();
+					new Handler(listener.accept(), clientNum, this.hostPeer).start();
 					// System.out.println("Client "  + clientNum + " is connected!");
 					
 					logging.writeLog(String.format(
@@ -70,12 +70,14 @@ public class Server extends Thread{
 		private int no;		//The index number of the client
 		
 		private HandShake handShake;
+		private Peer server;
 		private Peer client;
 		private ActualMsg actMsg;
 
-    public Handler(Socket connection, int no) {
+    public Handler(Socket connection, int no, Peer hostPeer) {
       this.connection = connection;
 	    this.no = no;
+			this.server = hostPeer;
 			this.client = null;
 			this.handShake = null;
 			this.actMsg = null;
@@ -103,15 +105,17 @@ public class Server extends Thread{
 					// waiting for hand shake message
 					getClientId = this.handShake.ReceiveHandShake(in);
 				}
-
+				
 				this.client = new Peer(getClientId, null, null, null);
+				logging.logHandShakeSuccess(this.server, this.client);
 				this.actMsg = new ActualMsg(this.client);
 				
 				this.actMsg.send(out, ActualMsg.BITFIELD, fm.getOwnBitfield());
-				
+				byte msg_type = -1;
 				// start receiving message from client
 				while(true) {
-					actMsg.recv(in);
+					msg_type = actMsg.recv(in);
+					reactions(msg_type);
 				}
 			}
 			catch(IOException e){
@@ -130,5 +134,24 @@ public class Server extends Thread{
 				}
 			}
 		}
+
+		/**
+		 * Reaction of Server receiving the msg, base on the msg type 
+		 * @param msg_type
+		 * @return
+		 * @throws IOException
+		 */
+		public boolean reactions(byte msg_type) throws IOException{
+			if(msg_type == ActualMsg.INTERESTED) {
+
+			}
+			else if(msg_type == ActualMsg.NOTINTERESTED) {
+
+			}
+			else if(msg_type == ActualMsg.REQUEST) {
+
+			}
+			return false;
+		}	
   }
 }

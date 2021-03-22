@@ -93,12 +93,12 @@ public class Client extends Peer implements Runnable {
 						);
 					}
 					
-					logging.writeLog("Handshake Success between Peer [%s] to Peer [%s], receiving file process start");
+					logging.logHandShakeSuccess(this.clientPeer, this.targetHostPeer);
 					byte msg_type = -1;
 					while(true){
 						// Receive actual msg from server
 						msg_type = actMsg.recv(in);
-						resp_actions(msg_type, out);
+						reactions(msg_type, out);
 					}
 				}
 				catch (ConnectException e) {
@@ -132,13 +132,13 @@ public class Client extends Peer implements Runnable {
 	}
 
 	/**
-	 * Reaction of receiving the msg, base on the msg type 
+	 * Reaction of client receiving the msg, base on the msg type 
 	 * @param msg_type
 	 * @param out
 	 * @return
 	 * @throws IOException
 	 */
-	public boolean resp_actions(byte msg_type, ObjectOutputStream out) throws IOException{
+	public boolean reactions(byte msg_type, ObjectOutputStream out) throws IOException{
 		if(msg_type == ActualMsg.BITFIELD) {
 			// update targetHostPeer's bitfield
 			byte[] b = actMsg.bitfieldMsg.getBitfield();
@@ -161,9 +161,12 @@ public class Client extends Peer implements Runnable {
 		else if(msg_type == ActualMsg.UNCHOKE) {
 
 		}
+		else if(msg_type == ActualMsg.PIECE) {
+
+		}
 		return false;
 	}
-	
+
 	/**
 	 * 
 	 * @param args
