@@ -84,7 +84,7 @@ public class HandShake implements Serializable {
 		opStream.flush();
 		logging.logSendHandShakeMsg(this.targetPeerID);
 	}
-
+	
 	public String ReceiveHandShake(InputStream in) throws IOException, CustomExceptions{
 		try {
 			ObjectInputStream ipStream = new ObjectInputStream(in);
@@ -107,7 +107,7 @@ public class HandShake implements Serializable {
 	}
 	
 	/**
-	 * 
+	 *
 	 * @param checkId
 	 * @return
 	 */
@@ -117,6 +117,7 @@ public class HandShake implements Serializable {
 				return true;
 			}
 		}
+		
 		throw new CustomExceptions(
 			ErrorCode.failHandshake, 
 			String.format(
@@ -137,6 +138,10 @@ public class HandShake implements Serializable {
 				senderId
 			));
 		
+		/**
+		 * TODO check header, the header should not be set static variable in Response 
+		 * it should be deserialize from input stream
+		 */
 		throw new CustomExceptions(
 			ErrorCode.failHandshake, 
 			String.format(
