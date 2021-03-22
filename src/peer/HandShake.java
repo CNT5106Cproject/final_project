@@ -153,7 +153,7 @@ public class HandShake implements Serializable {
 		 * it should be deserialize from input stream
 		 */
 		/** this code is incorrect */
-		if(receiveHeader!= "P2PFILESHARINGPROJ") {
+		if(receiveHeader.equals("P2PFILESHARINGPROJ")) {
 			logging.writeLog(
 				String.format(
 					"Peer [%s] receive Handshake success from [%s]", 
