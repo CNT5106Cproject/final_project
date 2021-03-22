@@ -11,6 +11,7 @@ public class Server extends Thread{
 
 	private Peer hostPeer;
 	private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
+	private static FileManager fm = FileManager.getInstance();
 	private static LogHandler logging = new LogHandler();
 
 	public Server() {
@@ -49,8 +50,11 @@ public class Server extends Thread{
 		}
 	}
 
+	/** 
+	 *  This class will set an interval timer to make the unchoking decision.
+	*/
 	private static class ChokingMechanism extends Thread {
-
+		
 	}
 
 	/**
@@ -78,8 +82,14 @@ public class Server extends Thread{
     }
 
     public void run() {
+			/**
+			 * Server progress
+			 * 1. Handshake Msg-> success -> goes 2
+			 * 2. Send BitField Msg to client 
+			 */
  			try {
-				//initialize Input and Output streams
+				
+				// initialize Input and Output streams
 				out = new ObjectOutputStream(connection.getOutputStream());
 				out.flush();
 				in = new ObjectInputStream(connection.getInputStream());
@@ -96,6 +106,8 @@ public class Server extends Thread{
 
 				this.client = new Peer(getClientId, null, null, null);
 				this.actMsg = new ActualMsg(this.client);
+				
+				this.actMsg.send(out, ActualMsg.BITFIELD, fm.getOwnBitfield());
 				
 				// start receiving message from client
 				while(true) {
@@ -116,17 +128,6 @@ public class Server extends Thread{
 				catch(IOException e){
 					logging.writeLog("severe", "Server close connection failed, ex:" + e);
 				}
-			}
-		}
-
-		//send a message to the output stream
-		public void sendMessage(String msg) {
-			try{
-				out.writeObject(msg);
-				out.flush();
-			}
-			catch(IOException ioException){
-				logging.writeLog("severe", "client send message failed, ex:" + ioException);
 			}
 		}
   }

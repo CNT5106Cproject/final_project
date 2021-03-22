@@ -94,9 +94,11 @@ public class Client extends Peer implements Runnable {
 					}
 					
 					logging.writeLog("Handshake Success between Peer [%s] to Peer [%s], receiving file process start");
+					byte msg_type = -1;
 					while(true){
 						// Receive actual msg from server
-						actMsg.recv(in);
+						msg_type = actMsg.recv(in);
+						resp_actions(msg_type, out);
 					}
 				}
 				catch (ConnectException e) {
@@ -129,16 +131,37 @@ public class Client extends Peer implements Runnable {
 		}
 	}
 
-	//send a message to the output stream
-	void sendMessage(String msg) {
-		try {
-			//stream write the message
-			out.writeObject(msg);
-			out.flush();
+	/**
+	 * Reaction of receiving the msg, base on the msg type 
+	 * @param msg_type
+	 * @param out
+	 * @return
+	 * @throws IOException
+	 */
+	public boolean resp_actions(byte msg_type, ObjectOutputStream out) throws IOException{
+		if(msg_type == ActualMsg.BITFIELD) {
+			// update targetHostPeer's bitfield
+			byte[] b = actMsg.bitfieldMsg.getBitfield();
+			fm.insertBitfield(targetHostPeer.getId(), b, b.length);
+			// send interest or not
+			if(fm.isInterested(targetHostPeer.getId())) {
+				actMsg.send(out, ActualMsg.INTERESTED, 0);
+			}
+			else {
+				actMsg.send(out, ActualMsg.NOTINTERESTED, 0);
+			}
+			return true;
 		}
-		catch(IOException ioException){
-			logging.writeLog("severe", "client send message failed, ex:" + ioException);
+		else if(msg_type == ActualMsg.HAVE) {
+
 		}
+		else if(msg_type == ActualMsg.CHOKE) {
+
+		}
+		else if(msg_type == ActualMsg.UNCHOKE) {
+
+		}
+		return false;
 	}
 	
 	/**
