@@ -7,6 +7,7 @@ import java.nio.channels.*;
 
 import utils.CustomExceptions;
 import utils.LogHandler;
+import utils.Tools;
 
 public class Server extends Thread{
 
@@ -63,11 +64,7 @@ public class Server extends Thread{
 	* loop and are responsible for dealing with a single client's requests.
 	*/
   private static class Handler extends Thread {
-  	private String message;    // message received from the client
-		private String MESSAGE;    // uppercase message send to the client
 		private Socket connection;
-		private ObjectInputStream in;	//stream read from the socket
-    private ObjectOutputStream out;    //stream write to the socket
 		private int no;		//The index number of the client
 		
 		private HandShake handShake;
@@ -93,43 +90,54 @@ public class Server extends Thread{
  			try {
 				
 				// initialize Input and Output streams
-				out = new ObjectOutputStream(connection.getOutputStream());
-				out.flush();
-				in = new ObjectInputStream(connection.getInputStream());
+
+				// out = new ObjectOutputStream(connection.getOutputStream());
+				// out.flush();
+				// in = new ObjectInputStream(connection.getInputStream());
+				OutputStream outConn = connection.getOutputStream();
+				InputStream inConn = connection.getInputStream();
 				
 				if(this.handShake == null) {
 					this.handShake = new HandShake();
-				}
+					String getClientId = null;
+					while(true) {
+						// waiting for hand shake message
+						getClientId = this.handShake.ReceiveHandShake(inConn);
+						if(this.handShake.isSuccess() && getClientId != null) {
+							this.handShake.SendHandShake(outConn);
+							this.client = new Peer(getClientId);
+							logging.logHandShakeSuccess(this.server, this.client);
+							break;
+						}
+					}
+			 	}
 				
-				String getClientId = null;
-				while(!handShake.isSuccess()) {
-					// waiting for hand shake message
-					getClientId = this.handShake.ReceiveHandShake(in);
-				}
-				
-				this.client = new Peer(getClientId, null, null, null);
-				logging.logHandShakeSuccess(this.server, this.client);
+				/**
+				 * this.ownBitfield is set up at FileManager constructor
+				 */
 				this.actMsg = new ActualMsg(this.client);
+				this.actMsg.send(outConn, ActualMsg.BITFIELD, fm.getOwnBitfield());
+				logging.logSendBitFieldMsg(this.client);
 				
-				this.actMsg.send(out, ActualMsg.BITFIELD, fm.getOwnBitfield());
 				byte msg_type = -1;
-				// start receiving message from client
 				while(true) {
-					msg_type = actMsg.recv(in);
-					reactions(msg_type);
+					msg_type = actMsg.recv(inConn);
+					if(msg_type != -1) {
+						reactions(msg_type);
+					}
 				}
 			}
 			catch(CustomExceptions e){
-				logging.writeLog("severe", e.toString());
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", trace);
 			}
 			catch(IOException e){
-				logging.writeLog("severe", "Server thread IO exception, ex:" + e);
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "Server thread IO exception, ex:" + trace);
 			}
 			finally {
 			// Close connections
 				try{
-					in.close();
-					out.close();
 					connection.close();
 				}
 				catch(IOException e){
@@ -146,7 +154,7 @@ public class Server extends Thread{
 		 */
 		public boolean reactions(byte msg_type) throws IOException{
 			if(msg_type == ActualMsg.INTERESTED) {
-
+				logging.logReceiveInterestMsg(this.client);
 			}
 			else if(msg_type == ActualMsg.NOTINTERESTED) {
 

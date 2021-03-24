@@ -18,8 +18,6 @@ public class Client extends Peer implements Runnable {
 	private Peer targetHostPeer;
 	private Socket requestSocket; // socket connect to the server
 	private boolean tryToConnect;
-	private ObjectOutputStream out; // stream write to the socket
-	private ObjectInputStream in; // stream read from the socket
 	private String message; // message send to the server
 	private String MESSAGE; // capitalized message read from the server
 
@@ -57,9 +55,8 @@ public class Client extends Peer implements Runnable {
 					 * Initialize inputStream and outputStream
 					*/
 					tryToConnect = false;
-					out = new ObjectOutputStream(requestSocket.getOutputStream());
-					out.flush();
-					in = new ObjectInputStream(requestSocket.getInputStream());
+					OutputStream outConn = requestSocket.getOutputStream();
+					InputStream inConn = requestSocket.getInputStream();
 					
 					/**
 					 * this.handShake is null for not been handshake before
@@ -68,41 +65,39 @@ public class Client extends Peer implements Runnable {
 					*/
 					if(this.handShake == null) {
 						this.handShake = new HandShake(targetHostPeer);
-					}
-					
-					int retryHandShake = 0;
-					while(retryHandShake < sysInfo.getRetryLimit()) {
-						this.handShake.SendHandShake(out);
-						this.handShake.ReceiveHandShake(in);
-						
-						if(this.handShake.isSuccess()) {
-							break;
-						}
-						logging.writeLog(
-							"warning", 
-							String.format("Handshake with [%s] failed, start retry %s", targetHostPeer.getId(), retryHandShake)
-						);
-						Tools.timeSleep(sysInfo.getRetryInterval());
-						retryHandShake++;
-					}
+											
+						int retryHandShake = 0;
+						while(retryHandShake < sysInfo.getRetryLimit()) {
+							this.handShake.SendHandShake(outConn);
+							this.handShake.ReceiveHandShake(inConn);
+							
+							if(this.handShake.isSuccess()) {
+								logging.logHandShakeSuccess(this.clientPeer, this.targetHostPeer);
+								break;
+							}
 
-					if(!this.handShake.isSuccess()) {
-						throw new CustomExceptions(
-							ErrorCode.failHandshake, 
-							String.format("Handshake Failed between Peer [%s] to Peer [%s] ", sysInfo.getHostPeer(), this.targetHostPeer)
-						);
+							logging.writeLog(
+								"warning", 
+								String.format("Handshake with [%s] failed, start retry %s", targetHostPeer.getId(), retryHandShake)
+							);
+							Tools.timeSleep(sysInfo.getRetryInterval());
+							retryHandShake++;
+						}
 					}
 					
-					logging.logHandShakeSuccess(this.clientPeer, this.targetHostPeer);
 					byte msg_type = -1;
 					while(true){
 						// Receive actual msg from server
-						msg_type = actMsg.recv(in);
-						reactions(msg_type, out);
+						msg_type = actMsg.recv(inConn);
+						if(msg_type != -1) {
+							reactions(msg_type, outConn);
+						}
 					}
 				}
 				catch (ConnectException e) {
 					logging.logConnError(clientPeer, targetHostPeer);
+					close_connection(requestSocket);
+					
 					// recreate socket after time delay
 					Tools.timeSleep(sysInfo.getRetryInterval());
 					tryToConnect = true;
@@ -111,42 +106,49 @@ public class Client extends Peer implements Runnable {
 			}
 		}			
 		catch(CustomExceptions e){
-			logging.writeLog("severe", e.toString());
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog("severe", trace);
 		}
 		catch(IOException e){
-			logging.writeLog("severe", "client thread IO exception, ex:" + e);
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog("severe", "client thread IO exception, ex:" + trace);
 		}
 		finally{
-			// Close connections
-			try{
-				in.close();
-				out.close();
-				requestSocket.close();
-			}
-			catch(IOException e){
-				logging.writeLog("severe", "Client close connection failed, ex:" + e);
-			}
+			close_connection(requestSocket);
 		}
 	}
 
 	/**
+	 * Close the connection in client thread
+	 * @param requestSocket
+	 */
+	private void close_connection(Socket requestSocket) {
+		try{
+			requestSocket.close();
+		}
+		catch(IOException e){
+			logging.writeLog("severe", "Client close connection failed, ex:" + e);
+		}
+	}
+	/**
 	 * Reaction of client receiving the msg, base on the msg type 
 	 * @param msg_type
-	 * @param out
+	 * @param outConn
 	 * @return
 	 * @throws IOException
 	 */
-	public boolean reactions(byte msg_type, ObjectOutputStream out) throws IOException{
+	public boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
 		if(msg_type == ActualMsg.BITFIELD) {
+			logging.logBitFieldMsg(this.targetHostPeer);
 			// update targetHostPeer's bitfield
 			byte[] b = actMsg.bitfieldMsg.getBitfield();
-			fm.insertBitfield(targetHostPeer.getId(), b, b.length);
+			fm.insertBitfield(this.targetHostPeer.getId(), b, b.length);
 			// send interest or not
-			if(fm.isInterested(targetHostPeer.getId())) {
-				actMsg.send(out, ActualMsg.INTERESTED, 0);
+			if(fm.isInterested(this.targetHostPeer.getId())) {
+				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
 			}
 			else {
-				actMsg.send(out, ActualMsg.NOTINTERESTED, 0);
+				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
 			}
 			return true;
 		}
