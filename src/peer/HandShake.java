@@ -13,8 +13,8 @@ import utils.LogHandler;
 
 public class HandShake implements Serializable {
 
-	private static final long serialVersionUID = -1L;
-	private static final String Header = "P2PFILESHARINGPROJ"; 
+	private static final long serialVersionUID = -7101939809729691954L;
+	private static final String Header = "P2PFILESHARINGPROJ"; // fixed header show in description
 	private byte[] zeroBits = new byte[10];
 	private final String peerMsgHeader;
 	private String peerID; // self-peer ID 
@@ -75,7 +75,7 @@ public class HandShake implements Serializable {
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		/** Change the header to invalid one*/
-		return sb.append("[Header :").append("ABCDE").append("]\n").append("[Zero Bits :").append(getZeroBits()).append("[Peer ID: ").append(this.peerID).append("]")
+		return sb.append("[Header :").append("P2PFILESHARINGPROJ").append("]\n").append("[Zero Bits :").append(getZeroBits()).append("[Peer ID: ").append(this.peerID).append("]")
 				.toString();
 	}
 
@@ -96,6 +96,7 @@ public class HandShake implements Serializable {
 				this.peerID,
 				Response.toString()
 			));
+			logging.logReceiveHandShakeMsg(this.peerID);
 			checkHeader(Response.peerMsgHeader, Response.peerID);
 			isNeighbor(Response.peerID);
 			setSuccess();
