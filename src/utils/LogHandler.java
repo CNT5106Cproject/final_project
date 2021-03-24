@@ -241,12 +241,16 @@ public final class LogHandler {
   }
 
   public void logSendHandShakeMsg(String targetPeerID) {
-    logger.info(String.format("Sending handshake message to peer [%s]", targetPeerID));
+    logger.info(String.format("Peer [%s] sending handshake message to peer [%s]", sysInfo.getHostPeer().getId(), targetPeerID));
   }
 
-  public void logReceiveHandShakeMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘handshake’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+  public void logReceiveHandShakeMsg(String senderId) {
+    String msg = String.format("Peer [%s] received the ‘handshake’ message from [%s]", sysInfo.getHostPeer().getId(), senderId);
     logger.info(msg);
+  }
+
+  public void logSendBitFieldMsg(Peer recv) {
+    logger.info(String.format("Peer [%s] sending bitfield message to peer [%s]", sysInfo.getHostPeer().getId(), recv.getId()));
   }
 
   public void logBitFieldMsg(Peer sender) {
