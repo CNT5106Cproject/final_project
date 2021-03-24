@@ -248,4 +248,9 @@ public final class LogHandler {
     String msg = String.format("Peer [%s] received the ‘handshake’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
+
+  public void logBitFieldMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘bitfield’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
 }

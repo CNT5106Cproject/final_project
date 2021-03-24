@@ -9,7 +9,7 @@ import utils.LogHandler;
 // 
 // This class is not thread-safe
 public class ActualMsg{
-	Peer targetPeer; // communicate target peer
+	Peer interConnPeer; // the other peer communicating with msg
 	// pretend to be enum
 	public static byte CHOKE = 0;
 	public static byte UNCHOKE = 1;
@@ -33,8 +33,8 @@ public class ActualMsg{
 
 	private static LogHandler logging = new LogHandler();
 	
-	ActualMsg(Peer targetPeer) {
-		this.targetPeer = targetPeer;
+	ActualMsg(Peer interConnPeer) {
+		this.interConnPeer = interConnPeer;
 	}
 
 	/**
@@ -126,6 +126,7 @@ public class ActualMsg{
 			else if(type == BITFIELD){
 				BitfieldMsg bitfieldMsg = (BitfieldMsg) msg;
 				this.bitfieldMsg = bitfieldMsg;
+				logging.logBitFieldMsg(this.interConnPeer);
 			}
 			else{
 				PieceMsg pieceMsg = (PieceMsg) msg;
@@ -133,7 +134,7 @@ public class ActualMsg{
 			}
 			logging.writeLog(
 				String.format("Receive msg from peer [%s], type: [%s]", 
-				this.targetPeer.getId(),
+				this.interConnPeer.getId(),
 				type
 			));
 			return type;
