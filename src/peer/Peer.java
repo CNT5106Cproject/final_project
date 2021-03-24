@@ -30,7 +30,24 @@ public class Peer {
       this.hasFile = Short.parseShort(hasFile) == 0 ? false : true;
     }
     catch (Exception ex) {
-      String errorStr = CustomExceptions.errorResponse(ErrorCode.failParsePeerInfo, "failed to parse peerinfo");
+      String errorStr = CustomExceptions.errorResponse(ErrorCode.failParsePeerInfo, "failed to parse peer info");
+      System.out.println(errorStr + ", ex:" + ex);
+		}
+	}
+
+  /**
+   * Set up only peerId, use in Server thread
+   * @param peerId
+   */
+  public Peer(String peerId) {
+    try {
+      this.peerId = peerId;
+      this.hostName = null;
+      this.port = -1;
+      this.hasFile = false;
+    }
+    catch (Exception ex) {
+      String errorStr = CustomExceptions.errorResponse(ErrorCode.failParsePeerInfo, "failed to parse peer id");
       System.out.println(errorStr + ", ex:" + ex);
 		}
 	}
