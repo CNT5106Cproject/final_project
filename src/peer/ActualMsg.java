@@ -126,7 +126,6 @@ public class ActualMsg{
 			else if(type == BITFIELD){
 				BitfieldMsg bitfieldMsg = (BitfieldMsg) msg;
 				this.bitfieldMsg = bitfieldMsg;
-				logging.logBitFieldMsg(this.interConnPeer);
 			}
 			else{
 				PieceMsg pieceMsg = (PieceMsg) msg;

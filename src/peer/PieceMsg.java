@@ -1,5 +1,4 @@
 package peer;
-import peer.ShortPayloadMsg;
 public class PieceMsg extends ShortPayloadMsg{
 	private byte[] data;
 	public void setData(int msgLen, byte msgType, int blockIdx, byte[] data){

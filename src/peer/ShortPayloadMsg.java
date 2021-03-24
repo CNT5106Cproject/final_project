@@ -1,5 +1,4 @@
 package peer;
-import peer.NoPayloadMsg;
 public class ShortPayloadMsg extends NoPayloadMsg{
 	protected int blockIdx;
 	public void setData(int msgLen, byte msgType, int blockIdx){
