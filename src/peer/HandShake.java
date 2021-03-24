@@ -7,15 +7,14 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 
+import utils.CustomExceptions;
+import utils.ErrorCode;
 import utils.LogHandler;
 
 public class HandShake implements Serializable {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -1482860868859618509L;
-	private static final String Header = "P2PFILESHARINGPROJ"; // fixed header show in description
+	private static final long serialVersionUID = -1L;
+	private static final String Header = "P2PFILESHARINGPROJ"; 
 	private byte[] zeroBits = new byte[10];
 	private final String peerMsgHeader;
 	private String peerID; // self-peer ID 
@@ -45,7 +44,6 @@ public class HandShake implements Serializable {
 	 */
 	public HandShake() {
 		super();
-		// Get self-peer info from SystemInfo Singleton -> self-peer Id & peer's neighborList;
 		this.peerID = sysInfo.getHostPeer().getId(); 
 		this.peerMsgHeader = getHeader();
 		this.targetPeerID = null;
@@ -59,55 +57,28 @@ public class HandShake implements Serializable {
 	public void setZeroBits(byte[] zeroBits) {
 		this.zeroBits = zeroBits;
 	}
-
-	/**
-	 * @return the peerID
-	 */
 	public String getPeerID() {
 		return peerID;
 	}
-
-	/**
-	 * @param peerID
-	 * the peerID to set
-	 */
 	public void setPeerID(String peerID) {
 		this.peerID = peerID;
 	}
-
-	/**
-	 * @return the peerMsgHeader
-	 */
+	
 	public String getPeerMsgHeader() {
 		return peerMsgHeader;
 	}
-
-	/**
-	 * @return the header
-	 */
+	
 	public static String getHeader() {
 		return Header;
 	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#toString()
-	 */
-	@Override
+	
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		return sb.append("[Header :").append(getHeader()).append("]\n").append("[Zero Bits :").append(getZeroBits()).append("[Peer ID: ").append(this.peerID).append("]")
+		/** Change the header to invalid one*/
+		return sb.append("[Header :").append("ABCDE").append("]\n").append("[Zero Bits :").append(getZeroBits()).append("[Peer ID: ").append(this.peerID).append("]")
 				.toString();
 	}
 
-	/**
-	 * HandShake step:
-	 * Client -> Server
-	 * Server response -> Client
-	 * @param out
-	 * @throws IOException
-	 */
 	public void SendHandShake(OutputStream out) throws IOException {
 		ObjectOutputStream opStream = new ObjectOutputStream(out);
 		opStream.writeObject(this);
@@ -115,57 +86,99 @@ public class HandShake implements Serializable {
 		logging.logSendHandShakeMsg(this.targetPeerID);
 	}
 
-	/**
-	 * Receive handshake string, get sender ID for response a handshake
-	 * @param in
-	 * @return sender ID 
-	 * @throws IOException
-	 */
-	public String ReceiveHandShake(InputStream in) throws IOException {
+	public String ReceiveHandShake(InputStream in) throws IOException, CustomExceptions{
 		try {
 			ObjectInputStream ipStream = new ObjectInputStream(in);
 			HandShake Response = (HandShake) ipStream.readObject();
-			// 1. TODO checkHeader
-			// 2. TODO check the its from the neighbor
-			// 3. Set the success flag to true after passing the tests above
+			logging.writeLog(
+				String.format(
+				"Peer [%s] receive handshake msg [%s]",
+				this.peerID,
+				Response.toString()
+			));
+			checkHeader(Response.peerMsgHeader, Response.peerID);
+			isNeighbor(Response.peerID);
 			setSuccess();
 			return Response != null ? Response.peerID : null;
-		} 
+		}
 		catch(ClassNotFoundException e){
 			logging.writeLog("severe", "read input stream exception, ex:" + e);
 		}
-		catch (Exception e) {
-			logging.writeLog("severe", String.format("Error, Receive handshake from [%s]", this.targetPeerID));
-			System.out.println(e);
-		}
 		return null;
 	}
-
-
-	// public boolean checkHeader() {
-
-	// }
-
-	// public boolean checkPeerId(msgPeerId) {
-	// 	Peer p = SystemInfo.getSingletonObj().getHostPeer();
-	// }
-
-	// public boolean isNeighbor(peerId) {
-
-	// }
 	
 	/**
-	 * Passing checkList.
-	 * The handshake is success.
+	 *
+	 * @param checkId
+	 * @return
 	 */
+	private boolean isNeighbor(String checkId) throws CustomExceptions {
+		logging.writeLog(
+			String.format(
+				"Peer [%s] check if [%s] is neighbor", 
+				this.peerID,
+				checkId
+			)
+		);
+
+		for (Peer p: sysInfo.getPeerList()) {
+			if(p.getId().equals(checkId)) {
+				return true;
+			}
+		}
+		
+		throw new CustomExceptions(
+			ErrorCode.failHandshake, 
+			String.format(
+				"Peer [%s] Handshake Failed, Peer [%s] is not neighbor", 
+				this.peerID, 
+				checkId
+			)
+		);
+		// return sysInfo.getPeerList().contains(checkId);
+	}
+
+	private boolean checkHeader(String receiveHeader, String senderId) throws CustomExceptions {
+		logging.writeLog(
+			String.format(
+				"Peer [%s] receive Handshake header %s from [%s]", 
+				this.peerID,
+				receiveHeader,
+				senderId
+			));
+		
+		/**
+		 * TODO 
+		 * check header, the receiveHeader should not be set static variable in Response 
+		 * it should be deserialize from input stream
+		 */
+		/** this code is incorrect */
+		if(receiveHeader.equals("P2PFILESHARINGPROJ")) {
+			logging.writeLog(
+				String.format(
+					"Peer [%s] receive Handshake success from [%s]", 
+					this.peerID,
+					senderId
+				));
+			return true;
+		}
+
+		throw new CustomExceptions(
+			ErrorCode.failHandshake, 
+			String.format(
+				"Peer [%s] Handshake Failed, Peer [%s] is not neighbor",
+				this.peerID, 
+				senderId
+			)
+		);
+	}
+
 	private void setSuccess() {
 		this.success = true;
 	}
 
-	/**
-	 * return if handshake is success or not
-	 */
 	public boolean isSuccess() {
 		return this.success;
 	}
+
 }

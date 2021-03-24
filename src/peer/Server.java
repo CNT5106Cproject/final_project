@@ -5,6 +5,7 @@ import java.io.*;
 import java.nio.*;
 import java.nio.channels.*;
 
+import utils.CustomExceptions;
 import utils.LogHandler;
 
 public class Server extends Thread{
@@ -118,6 +119,9 @@ public class Server extends Thread{
 					reactions(msg_type);
 				}
 			}
+			catch(CustomExceptions e){
+				logging.writeLog("severe", e.toString());
+			}
 			catch(IOException e){
 				logging.writeLog("severe", "Server thread IO exception, ex:" + e);
 			}
@@ -127,7 +131,6 @@ public class Server extends Thread{
 					in.close();
 					out.close();
 					connection.close();
-					logging.logCloseConn(this.client);
 				}
 				catch(IOException e){
 					logging.writeLog("severe", "Server close connection failed, ex:" + e);
