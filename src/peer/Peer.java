@@ -2,6 +2,8 @@ package peer;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
+import utils.LogHandler;
+import utils.Tools;
 
 public class Peer {
   /**
@@ -22,16 +24,19 @@ public class Peer {
    * @param port
    * @param hasFile
    */
-	public Peer(String peerId, String hostName, String port, String hasFile) {
+	public Peer(String peerId, String hostName, String port, String hasFile) throws CustomExceptions{
     try {
       this.peerId = peerId;
       this.hostName = hostName;
       this.port = Integer.parseInt(port);
       this.hasFile = Short.parseShort(hasFile) == 0 ? false : true;
     }
-    catch (Exception ex) {
-      String errorStr = CustomExceptions.errorResponse(ErrorCode.failParsePeerInfo, "failed to parse peer info");
-      System.out.println(errorStr + ", ex:" + ex);
+    catch (Exception e) {
+      String trace = Tools.getStackTrace(e);
+      throw new CustomExceptions(
+        ErrorCode.failParsePeerInfo, 
+				String.format("failed to parse peer id, ex:" + trace)
+			);
 		}
 	}
 
@@ -39,16 +44,19 @@ public class Peer {
    * Set up only peerId, use in Server thread
    * @param peerId
    */
-  public Peer(String peerId) {
+  public Peer(String peerId) throws CustomExceptions{
     try {
       this.peerId = peerId;
       this.hostName = null;
       this.port = -1;
       this.hasFile = false;
     }
-    catch (Exception ex) {
-      String errorStr = CustomExceptions.errorResponse(ErrorCode.failParsePeerInfo, "failed to parse peer id");
-      System.out.println(errorStr + ", ex:" + ex);
+    catch (Exception e) {
+      String trace = Tools.getStackTrace(e);
+      throw new CustomExceptions(
+        ErrorCode.failParsePeerInfo, 
+				String.format("failed to parse peer id, ex:" + trace)
+			);
 		}
 	}
 
@@ -63,4 +71,8 @@ public class Peer {
   public int getPort() {
 		return this.port;
 	}
+
+  public boolean getHasFile() {
+    return this.hasFile;
+  }
 }
