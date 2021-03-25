@@ -116,9 +116,8 @@ public class HandShake implements Serializable {
 				checkId
 			)
 		);
-		
-		HashMap<String, Peer> neighborMap = sysInfo.getNeighborMap();
-		if(neighborMap.get(checkId) != null) return true;
+
+		if(sysInfo.getNeighborMap().get(checkId) != null) return true;
 
 		throw new CustomExceptions(
 			ErrorCode.failHandshake, 
