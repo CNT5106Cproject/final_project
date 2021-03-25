@@ -51,9 +51,14 @@ public class PeerProcess {
 			
 			/** Set up peer's host info and neighbor list */
 			SystemInfo s = new SystemInfo(hostPeer, neighborList);
-		} catch (FileNotFoundException e) {
+		} 
+		catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
+		catch (CustomExceptions e) {
+			System.out.println(e);
+		}
+
 	}
 
 	private static void readCommon(String hostPeerId) {
@@ -73,7 +78,8 @@ public class PeerProcess {
 			
 			/** Set up peer's system parameters */
 			SystemInfo s = new SystemInfo(infoList);
-		} catch (FileNotFoundException e) {
+		} 
+		catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
 	}
@@ -81,13 +87,14 @@ public class PeerProcess {
 	 * Main Process of the Peer
 	 */
 	public static void main(String[] args) {
+		boolean debug = true;
 		try {
 			/* Must have at least peer ID */
 			if (args.length < 1) {
 				throw new CustomExceptions(ErrorCode.invalidArgumentLength, "Missing Peer Id");
 			}
 			/* Load peer infos */
-			readPeerInfo(args[0], true);
+			readPeerInfo(args[0], debug);
 			readCommon(args[0]);
 
 			/** Get peer's system parameter */
@@ -102,9 +109,11 @@ public class PeerProcess {
 
 			// TODO 
 			// 1. Check file exist and hasFile flag
+			String peerFileDir = cfgDir + sysInfo.getHostPeer().getId() + '/' + sysInfo.getFileName();
+			String mode = sysInfo.getHostPeer().getHasFile() ? "r" : "rw";
 			FileManager fm = FileManager.getInstance(
-				sysInfo.getFileName(),
-				"rw",
+				peerFileDir,
+				mode,
 				sysInfo.getFileSize(),
 				sysInfo.getPieceSize()
 			);
@@ -114,15 +123,24 @@ public class PeerProcess {
 			server.start();
 
 			/* Start building client threads for other target hosts */
-			logging.writeLog("Start client connections");
-			List<Peer> neighborList = sysInfo.getPeerList();
-			for(int i=0; i < neighborList.size(); i++) {
-				Client client = new Client(neighborList.get(i));
-				Thread t = new Thread(client);
-				t.start();
+			if(!sysInfo.getHostPeer().getHasFile()) {
+				List<Peer> neighborList = sysInfo.getPeerList();
+				logging.writeLog(
+					String.format("(peer process) start %s client connections with %s neighbors",
+					neighborList.size(),
+					neighborList.size()
+				));
+				for(int i=0; i < neighborList.size(); i++) {
+					Client client = new Client(neighborList.get(i));
+					Thread t = new Thread(client);
+					t.start();
+				}
+			}
+			else {
+				logging.writeLog("(peer process) Peer hasFile is is true, no need start client threads");
 			}
 
-			logging.writeLog("Number of thread: " + java.lang.Thread.activeCount());
+			logging.writeLog("(peer process) Number of thread create by peer: " + java.lang.Thread.activeCount());
 		}
 		catch (Exception e) {
 			e.printStackTrace();
