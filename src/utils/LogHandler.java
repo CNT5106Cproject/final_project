@@ -164,7 +164,7 @@ public final class LogHandler {
   * Peer action errors
   */
   public void logConnError(Peer client, Peer targetHost) {
-    String msg = String.format("Peer [%s] occurs connection ERROR with Peer [%s], Start retry in [%s] sec", 
+    String msg = String.format("Peer [%s] (client) occurs connection ERROR with Peer [%s], Start retry in [%s] sec", 
       client.getId(), 
       targetHost.getId(),
       sysInfo.getRetryInterval()
@@ -179,7 +179,7 @@ public final class LogHandler {
   */
   // 1. TCP connection
   public void logStartConn(Peer client, Peer targetHost) {
-    String msg = String.format("Peer [%s] makes a connection to Peer [%s]", client.getId(), targetHost.getId());
+    String msg = String.format("Peer [%s] (client) makes a connection to Peer [%s]", client.getId(), targetHost.getId());
     logger.info(msg);
   }
   
@@ -240,8 +240,8 @@ public final class LogHandler {
     logger.info(msg);
   }
 
-  public void logSendHandShakeMsg(String targetPeerID) {
-    logger.info(String.format("Peer [%s] sending handshake message to peer [%s]", sysInfo.getHostPeer().getId(), targetPeerID));
+  public void logSendHandShakeMsg(String targetPeerID, String threadType) {
+    logger.info(String.format("Peer [%s] (%s) sending handshake message to peer [%s]", sysInfo.getHostPeer().getId(), threadType, targetPeerID));
   }
 
   public void logReceiveHandShakeMsg(String senderId) {
@@ -250,11 +250,11 @@ public final class LogHandler {
   }
 
   public void logSendBitFieldMsg(Peer recv) {
-    logger.info(String.format("Peer [%s] sending bitfield message to peer [%s]", sysInfo.getHostPeer().getId(), recv.getId()));
+    logger.info(String.format("Peer [%s] (server) sending bitfield message to peer [%s]", sysInfo.getHostPeer().getId(), recv.getId()));
   }
 
   public void logBitFieldMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘bitfield’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] (client) received the ‘bitfield’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 }
