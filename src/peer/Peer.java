@@ -7,13 +7,20 @@ import utils.Tools;
 
 public class Peer {
   /**
-   * Peer Object with all infos
+   * Peer with initial params
    */
   private String peerId;
 	private String hostName;
 	private int port;
   private boolean hasFile;
   
+  /**
+   * Peer showing the file transfer state status
+   */
+  private boolean isInterested = false;
+  private boolean isChoking = false;
+  private boolean isDownLoading = false;
+
   public Peer() {
     
 	}
@@ -59,7 +66,7 @@ public class Peer {
 			);
 		}
 	}
-
+  
   public String getId() {
 		return this.peerId;
 	}
@@ -75,4 +82,36 @@ public class Peer {
   public boolean getHasFile() {
     return this.hasFile;
   }
+
+  /**
+   * Down below are functions for server thread 
+   * to maintain file transfer progress
+   */
+  public void setIsInterested(boolean status) {
+		this.isInterested = status;
+	}
+
+  public boolean getIsInterested() {
+		return this.isInterested;
+	}
+
+  public void setChoking() {
+		this.isChoking = true;
+	}
+
+  public void setUnChoking() {
+		this.isChoking = false;
+	}
+
+  public boolean getIsChoking() {
+		return this.isChoking;
+	}
+
+  public void setIsDownloading(boolean status) {
+		this.isDownLoading = status;
+	}
+
+  public boolean getIsDownloading() {
+		return this.isDownLoading;
+	}
 }
