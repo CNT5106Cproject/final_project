@@ -63,11 +63,12 @@ public class HandShake implements Serializable {
 	public void setPeerID(String peerID) {
 		this.peerID = peerID;
 	}
-	
+	public void setTargetPeerID(String peerID) {
+		this.targetPeerID = peerID;
+	}
 	public String getPeerMsgHeader() {
 		return peerMsgHeader;
 	}
-	
 	public static String getHeader() {
 		return Header;
 	}
@@ -83,20 +84,13 @@ public class HandShake implements Serializable {
 		ObjectOutputStream opStream = new ObjectOutputStream(out);
 		opStream.writeObject(this);
 		opStream.flush();
-		logging.logSendHandShakeMsg(this.targetPeerID);
 	}
 
 	public String ReceiveHandShake(InputStream in) throws IOException, CustomExceptions{
 		try {
 			ObjectInputStream ipStream = new ObjectInputStream(in);
 			HandShake Response = (HandShake) ipStream.readObject();
-			logging.writeLog(
-				String.format(
-				"Peer [%s] receive handshake msg [%s]",
-				this.peerID,
-				Response.toString()
-			));
-			logging.logReceiveHandShakeMsg(this.peerID);
+			logging.logReceiveHandShakeMsg(Response.peerID);
 			checkHeader(Response.peerMsgHeader, Response.peerID);
 			isNeighbor(Response.peerID);
 			setSuccess();
