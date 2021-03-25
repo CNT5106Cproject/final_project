@@ -2,6 +2,7 @@ package peer;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
@@ -106,6 +107,22 @@ public final class SystemInfo {
 
   public HashMap<String, Peer> getNeighborMap() {
     return this.neighborMap;
+  }
+
+  public void printNeighborsInfo() {
+    if(this.neighborMap != null && this.neighborMap.size() != 0) {
+      String infos = String.format("[%s] Print out neighbor map \n", this.host.getId());
+      for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
+        infos += String.format(
+          "(%s) isInterested: (%s) isChoking (%s) isDownloading (%s)\n",
+          n.getKey(),
+          n.getValue().getIsInterested(),
+          n.getValue().getIsChoking(),
+          n.getValue().getIsDownloading()
+        );
+        System.out.println(infos);
+      }
+    }
   }
 
   /**

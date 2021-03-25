@@ -148,7 +148,7 @@ public class Client extends Peer implements Runnable {
 	 * @return
 	 * @throws IOException
 	 */
-	public boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
+	private boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
 		if(msg_type == ActualMsg.BITFIELD) {
 			logging.logBitFieldMsg(this.targetHostPeer);
 			// update targetHostPeer's bitfield
