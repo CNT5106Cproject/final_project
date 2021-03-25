@@ -149,17 +149,34 @@ public class Server extends Thread{
 		 * @return
 		 * @throws IOException
 		 */
-		public boolean reactions(byte msg_type) throws IOException{
+		private boolean reactions(byte msg_type) throws IOException{
 			if(msg_type == ActualMsg.INTERESTED) {
 				logging.logReceiveInterestMsg(this.client);
+				setNeighborIN(this.client.getId(), true);
 			}
 			else if(msg_type == ActualMsg.NOTINTERESTED) {
-
+				logging.logReceiveNotInterestMsg(this.client);
+				setNeighborIN(this.client.getId(), false);
 			}
 			else if(msg_type == ActualMsg.REQUEST) {
 
 			}
 			return false;
-		}	
+		}
+		
+		/**
+		 * Change the neighbor peer's isInterested status in neighborMap.
+		 * @param peerId
+		 * @param status
+		 */
+		private void setNeighborIN(String peerId, boolean status) {
+			Peer p = sysInfo.getNeighborMap().get(peerId);
+			p.setIsInterested(status);
+			sysInfo.getNeighborMap().put(peerId, p);
+
+			Peer check = sysInfo.getNeighborMap().get(this.client.getId());
+			logging.writeLog(
+				"Check neighbor " + this.client.getId() + " isInterested status: " + check.getIsInterested());
+		}
   }
 }
