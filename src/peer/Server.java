@@ -37,7 +37,7 @@ public class Server extends Thread{
 					// System.out.println("Client "  + clientNum + " is connected!");
 					
 					logging.writeLog(String.format(
-						"# %s client is connected",
+						"(server) # %s client is connected",
 						clientNum
 					));
 					clientNum++;
@@ -84,16 +84,11 @@ public class Server extends Thread{
     public void run() {
 			/**
 			 * Server progress
-			 * 1. Handshake Msg-> success -> goes 2
+			 * 1. Handshake Msg -> success -> goes 2
 			 * 2. Send BitField Msg to client 
+			 * 3. Build InterestingList by interest messages
 			 */
  			try {
-				
-				// initialize Input and Output streams
-
-				// out = new ObjectOutputStream(connection.getOutputStream());
-				// out.flush();
-				// in = new ObjectInputStream(connection.getInputStream());
 				OutputStream outConn = connection.getOutputStream();
 				InputStream inConn = connection.getInputStream();
 				
@@ -104,14 +99,16 @@ public class Server extends Thread{
 						// waiting for hand shake message
 						getClientId = this.handShake.ReceiveHandShake(inConn);
 						if(this.handShake.isSuccess() && getClientId != null) {
-							this.handShake.SendHandShake(outConn);
 							this.client = new Peer(getClientId);
+							// set clientID
+							this.handShake.setTargetPeerID(getClientId);
+							this.handShake.SendHandShake(outConn);
+							logging.logSendHandShakeMsg(getClientId, "server");
 							logging.logHandShakeSuccess(this.server, this.client);
 							break;
 						}
 					}
 			 	}
-				
 				/**
 				 * this.ownBitfield is set up at FileManager constructor
 				 */

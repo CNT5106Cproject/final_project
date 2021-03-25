@@ -46,7 +46,7 @@ public class Client extends Peer implements Runnable {
 			while(fm != null && !fm.isComplete()) {
 				try {
 					// create a socket to connect to the server
-					if (tryToConnect) {
+					if (this.tryToConnect) {
 						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
 						logging.logStartConn(clientPeer, targetHostPeer);
 					}
@@ -54,7 +54,7 @@ public class Client extends Peer implements Runnable {
 					 * Disable tryToConnect
 					 * Initialize inputStream and outputStream
 					*/
-					tryToConnect = false;
+					this.tryToConnect = false;
 					OutputStream outConn = requestSocket.getOutputStream();
 					InputStream inConn = requestSocket.getInputStream();
 					
@@ -69,6 +69,8 @@ public class Client extends Peer implements Runnable {
 						int retryHandShake = 0;
 						while(retryHandShake < sysInfo.getRetryLimit()) {
 							this.handShake.SendHandShake(outConn);
+							
+							logging.logSendHandShakeMsg(this.targetHostPeer.getId(), "client");
 							this.handShake.ReceiveHandShake(inConn);
 							
 							if(this.handShake.isSuccess()) {
@@ -96,40 +98,49 @@ public class Client extends Peer implements Runnable {
 				}
 				catch (ConnectException e) {
 					logging.logConnError(clientPeer, targetHostPeer);
-					close_connection(requestSocket);
-					
 					// recreate socket after time delay
-					Tools.timeSleep(sysInfo.getRetryInterval());
-					tryToConnect = true;
-					this.handShake = null;
+					recreate_connection();
+				}
+				catch(CustomExceptions e){
+					String trace = Tools.getStackTrace(e);
+					logging.writeLog("severe", trace);
+
+					recreate_connection();
+				}
+				catch(IOException e){
+					String trace = Tools.getStackTrace(e);
+					logging.writeLog("severe", "client thread IO exception, ex:" + trace);
+
+					recreate_connection();
 				}
 			}
+
+			// The file download has complete
+			logging.logCompleteFile();
 		}			
-		catch(CustomExceptions e){
-			String trace = Tools.getStackTrace(e);
-			logging.writeLog("severe", trace);
-		}
-		catch(IOException e){
-			String trace = Tools.getStackTrace(e);
-			logging.writeLog("severe", "client thread IO exception, ex:" + trace);
-		}
 		finally{
-			close_connection(requestSocket);
+			try{
+				if(requestSocket != null) {
+					logging.writeLog("close client connection");
+					requestSocket.close();
+				}
+				logging.writeLog("close client thread");
+			}
+			catch(IOException e){
+				logging.writeLog("severe", "Client close connection failed, ex:" + e);
+			}
 		}
 	}
 
 	/**
-	 * Close the connection in client thread
-	 * @param requestSocket
+	 * Client thread - recreate socket connection with target host peer
 	 */
-	private void close_connection(Socket requestSocket) {
-		try{
-			requestSocket.close();
-		}
-		catch(IOException e){
-			logging.writeLog("severe", "Client close connection failed, ex:" + e);
-		}
+	private void recreate_connection() {
+		Tools.timeSleep(sysInfo.getRetryInterval());
+		tryToConnect = true;
+		this.handShake = null;
 	}
+
 	/**
 	 * Reaction of client receiving the msg, base on the msg type 
 	 * @param msg_type
