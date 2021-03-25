@@ -3,8 +3,10 @@ package peer;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Map.Entry;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
@@ -24,7 +26,7 @@ public class PeerProcess {
 		String fileName = peerInfoFN;
 
 		Peer hostPeer = null;
-		List<Peer> neighborList = new ArrayList<Peer>();
+		HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
 
 		if (debug) {
 			fileName = localPeerInfoFN;
@@ -44,13 +46,13 @@ public class PeerProcess {
 					hostPeer = newPeer;
 				}
 				else {
-					neighborList.add(newPeer);
+					neighborMap.put(newPeer.getId(), newPeer);
 				}
 			}
 			fileReader.close();
 			
 			/** Set up peer's host info and neighbor list */
-			SystemInfo s = new SystemInfo(hostPeer, neighborList);
+			SystemInfo s = new SystemInfo(hostPeer, neighborMap);
 		} 
 		catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -124,14 +126,15 @@ public class PeerProcess {
 
 			/* Start building client threads for other target hosts */
 			if(!sysInfo.getHostPeer().getHasFile()) {
-				List<Peer> neighborList = sysInfo.getPeerList();
+				HashMap<String, Peer> neighborMap = sysInfo.getNeighborMap();
 				logging.writeLog(
 					String.format("(peer process) start %s client connections with %s neighbors",
-					neighborList.size(),
-					neighborList.size()
+					neighborMap.size(),
+					neighborMap.size()
 				));
-				for(int i=0; i < neighborList.size(); i++) {
-					Client client = new Client(neighborList.get(i));
+
+				for(Entry<String, Peer> p: neighborMap.entrySet()) {
+					Client client = new Client(p.getValue());
 					Thread t = new Thread(client);
 					t.start();
 				}

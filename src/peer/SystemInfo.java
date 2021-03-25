@@ -1,6 +1,6 @@
 package peer;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import utils.CustomExceptions;
@@ -19,10 +19,10 @@ public final class SystemInfo {
   /**
    * Host peer infos
    * - host 
-   * - neighborList
+   * - neighborMap
    */
   private Peer host;
-  private List<Peer> neighborList = new ArrayList<Peer>();
+  private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
 
   /**
    * System Parameters from config
@@ -39,10 +39,10 @@ public final class SystemInfo {
    */
   public SystemInfo() {}
   
-  public SystemInfo(Peer host, List<Peer> neighborList) {
+  public SystemInfo(Peer host, HashMap<String, Peer> neighborMap) {
     singletonObj = new SystemInfo();
     singletonObj.setHostPeer(host);
-    singletonObj.setPeerList(neighborList);
+    singletonObj.setPeerList(neighborMap);
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -79,8 +79,8 @@ public final class SystemInfo {
     this.host = host;
   }
 
-  public void setPeerList(List<Peer> neighborList) {
-    this.neighborList = neighborList;
+  public void setPeerList(HashMap<String, Peer> neighborMap) {
+    this.neighborMap = neighborMap;
   }
 
   public void setSystemParam(List<String> SystemInfoList) {
@@ -104,8 +104,8 @@ public final class SystemInfo {
     return this.host;
   }
 
-  public List<Peer> getPeerList() {
-    return this.neighborList;
+  public HashMap<String, Peer> getNeighborMap() {
+    return this.neighborMap;
   }
 
   /**

@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.util.HashMap;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
@@ -30,7 +31,7 @@ public class HandShake implements Serializable {
 	 */
 	public HandShake(Peer targetPeer) {
 		super();
-		// Get self-peer info from SystemInfo Singleton -> self-peer Id & peer's neighborList;
+		// Get self-peer info from SystemInfo Singleton -> self-peer Id & peer's neighborMap;
 		this.peerID = sysInfo.getHostPeer().getId(); 
 		this.targetPeerID = targetPeer.getId();
 		this.peerMsgHeader = getHeader();
@@ -103,7 +104,7 @@ public class HandShake implements Serializable {
 	}
 	
 	/**
-	 *
+	 * Check Neighbor HashSet
 	 * @param checkId
 	 * @return
 	 */
@@ -115,13 +116,10 @@ public class HandShake implements Serializable {
 				checkId
 			)
 		);
-
-		for (Peer p: sysInfo.getPeerList()) {
-			if(p.getId().equals(checkId)) {
-				return true;
-			}
-		}
 		
+		HashMap<String, Peer> neighborMap = sysInfo.getNeighborMap();
+		if(neighborMap.get(checkId) != null) return true;
+
 		throw new CustomExceptions(
 			ErrorCode.failHandshake, 
 			String.format(
@@ -130,7 +128,6 @@ public class HandShake implements Serializable {
 				checkId
 			)
 		);
-		// return sysInfo.getPeerList().contains(checkId);
 	}
 
 	private boolean checkHeader(String receiveHeader, String senderId) throws CustomExceptions {
