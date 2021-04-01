@@ -13,9 +13,9 @@ public class Handshake
 	private static final int HANDSHAKE_PEERID_LENGTH = 4;
 	private static final String CHARSET_NAME = "UTF8";
 	private static final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
-	private byte[] msg_header = new byte[HANDSHAKE_HEADER_LENGTH];
-	private byte[] peerID = new byte[HANDSHAKE_PEERID_LENGTH];
-	private byte[] zeroBits = new byte[HANDSHAKE_ZEROBITS_LENGTH];
+	private int[] msg_header = new int[HANDSHAKE_HEADER_LENGTH];
+	private int[] peerID = new int[HANDSHAKE_PEERID_LENGTH];
+	private int[] zeroBits = new int[HANDSHAKE_ZEROBITS_LENGTH];
 	private String messageHeader;
 	private String messagePeerID;
 
@@ -28,43 +28,52 @@ public class Handshake
 
 		try {
 			this.messageHeader = Header;
-			this.msg_header = Header.getBytes(CHARSET_NAME);
-			if (this.msg_header.length > HANDSHAKE_HEADER_LENGTH)
-				throw new Exception("Header too long");
+			this.msg_header = convertToInt(Header);
+			if (this.msg_header.length != HANDSHAKE_HEADER_LENGTH)
+				throw new Exception("Unmatched header length");
 
 			this.messagePeerID = PeerId;
-			this.peerID = PeerId.getBytes(CHARSET_NAME);
-			if (this.peerID.length > HANDSHAKE_HEADER_LENGTH)
+			this.peerID = convertToInt(PeerId);
+			if (this.peerID.length > HANDSHAKE_PEERID_LENGTH)
 				throw new Exception("Peer ID too long");
 
-			this.zeroBits = "0000000000".getBytes(CHARSET_NAME);
+			this.zeroBits = convertToInt("0000000000");
 		} catch (Exception e) {
 			//PeerProcess.showLog(e.toString());
 		}
 
 	}
 
-	public Handshake(){
+	private Handshake(){
 		
 	}
 
+	public int[] convertToInt(String s) {
+		int[] result = new int[s.length()];
+		for (int i = 0; i < s.length(); i++) {
+			result[i] = s.charAt(i) - '0';
+		}
+
+		return result;
+	}
+
 	// return the handShakeHeader
-	public byte[] getHeader() {
+	public int[] getHeader() {
 		return msg_header;
 	}
 	
 	// return the peerID
-	public byte[] getPeerID() {
+	public int[] getPeerID() {
 		return peerID;
 	}
 
 	// Set the zeroBits 
-	public void setZeroBits(byte[] zeroBits) {
+	public void setZeroBits(int[] zeroBits) {
 		this.zeroBits = zeroBits;
 	}
 
 	// return the zeroBits
-	public byte[] getZeroBits() {
+	public int[] getZeroBits() {
 		return zeroBits;
 	}
 
@@ -88,7 +97,7 @@ public class Handshake
 	public void setHeader(byte[] handShakeHeader) {
 		try {
 			this.messageHeader = (new String(handShakeHeader, CHARSET_NAME)).toString().trim();
-			this.msg_header = this.messageHeader.getBytes();
+			this.msg_header = convertToInt(this.messageHeader);
 		} catch (UnsupportedEncodingException e) {
 			//PeerProcess.showLog(e.toString());
 		}
@@ -99,8 +108,8 @@ public class Handshake
 	public void setPeerID(String messagePeerID) {
 		try {
 			this.messagePeerID = messagePeerID;
-			this.peerID = messagePeerID.getBytes(CHARSET_NAME);
-		} catch (UnsupportedEncodingException e) {
+			this.peerID = convertToInt(messagePeerID);
+		} catch (Exception e) {
 			//PeerProcess.showLog(e.toString());
 		}
 	}
@@ -109,7 +118,7 @@ public class Handshake
 	public void setPeerID(byte[] peerID) {
 		try {
 			this.messagePeerID = (new String(peerID, CHARSET_NAME)).toString().trim();
-			this.peerID = this.messagePeerID.getBytes();
+			this.peerID = convertToInt(this.messagePeerID);
 
 		} catch (UnsupportedEncodingException e) {
 			//PeerProcess.showLog(e.toString());
@@ -120,8 +129,8 @@ public class Handshake
 	public void setHeader(String messageHeader) {
 		try {
 			this.messageHeader = messageHeader;
-			this.msg_header = messageHeader.getBytes(CHARSET_NAME);
-		} catch (UnsupportedEncodingException e) {
+			this.msg_header = convertToInt(messageHeader);
+		} catch (Exception e) {
 			//PeerProcess.showLog(e.toString());
 		}
 	}
@@ -189,7 +198,7 @@ public class Handshake
 			} else {
 				System.arraycopy(handshakeMessage.getZeroBits(), 0,
 						sendMessage, HANDSHAKE_HEADER_LENGTH,
-						HANDSHAKE_ZEROBITS_LENGTH - 1);
+						HANDSHAKE_ZEROBITS_LENGTH);
 			}
 
 			// Encode peer id
