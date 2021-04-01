@@ -33,9 +33,21 @@ public class ActualMsg{
 
 	private static LogHandler logging = new LogHandler();
 	
+	/**
+	 * Actual msg object create for sending message to multiple peers
+	 */
+	ActualMsg() {
+	}
+
+	/**
+	 * Actual msg object create for specific inter-connected peer
+	 * @param interConnPeer
+	 */
 	ActualMsg(Peer interConnPeer) {
 		this.interConnPeer = interConnPeer;
 	}
+
+
 
 	/**
 	 * send() for 

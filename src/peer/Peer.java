@@ -1,5 +1,7 @@
 package peer;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import utils.CustomExceptions;
 import utils.ErrorCode;
 import utils.LogHandler;
@@ -17,10 +19,12 @@ public class Peer {
   /**
    * Peer showing the file transfer state status
    */
+  private final ReentrantLock lock = new ReentrantLock();
   private boolean isInterested = false;
   private boolean isChoking = false;
   private boolean isDownLoading = false;
-
+  private double downloadRate = 0.0;
+  
   public Peer() {
     
 	}
@@ -92,7 +96,13 @@ public class Peer {
 	}
 
   public boolean getIsInterested() {
-		return this.isInterested;
+    this.lock.lock();
+    try {
+		  return this.isInterested;
+    }
+    finally {
+      this.lock.unlock();
+    } 
 	}
 
   public void setChoking() {
@@ -104,7 +114,13 @@ public class Peer {
 	}
 
   public boolean getIsChoking() {
-		return this.isChoking;
+    this.lock.lock();
+    try {
+		  return this.isChoking;
+    }
+    finally {
+      this.lock.unlock();
+    } 
 	}
 
   public void setIsDownloading(boolean status) {
@@ -112,6 +128,26 @@ public class Peer {
 	}
 
   public boolean getIsDownloading() {
-		return this.isDownLoading;
+    this.lock.lock();
+    try {
+		  return this.isDownLoading;
+    }
+    finally {
+      this.lock.unlock();
+    } 
+	}
+
+  public void setDownloadRate(double rate) {
+		this.downloadRate = rate;
+	}
+
+  public double getDownloadRate() {
+    this.lock.lock();
+    try {
+		  return this.downloadRate;
+    }
+    finally {
+      this.lock.unlock();
+    }
 	}
 }

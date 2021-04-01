@@ -3,6 +3,7 @@ package peer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
@@ -12,6 +13,7 @@ import utils.ErrorCode;
  */
 public final class SystemInfo {
   
+  private final ReentrantLock lock = new ReentrantLock();
   private static SystemInfo singletonObj = null;
 
   private static int retryLimit = 100;
@@ -21,9 +23,15 @@ public final class SystemInfo {
    * Host peer infos
    * - host 
    * - neighborMap
+   * - chokingMap 
+   *    The choking-unChoking interval will assigns new value to this object,
+   *    The opt unChoking interval will use this object to pick opt node.
    */
   private Peer host;
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
+  private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
+  // This map 
+  private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
 
   /**
    * System Parameters from config
@@ -99,14 +107,50 @@ public final class SystemInfo {
   }
 
   /**
-  * Get peer infos
+  * Get peer infos 
+  * - host
+  * - neighborMap -> all neighbors with there peer obj
   */
   public Peer getHostPeer() {
     return this.host;
   }
-
+  
   public HashMap<String, Peer> getNeighborMap() {
-    return this.neighborMap;
+    this.lock.lock();
+		try{
+      return this.neighborMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public HashMap<String, Peer> getInterestMap() {
+    this.lock.lock();
+		try{
+      return this.interestMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public void clearInterestMap() {
+    this.interestMap.clear();
+  }
+
+  public HashMap<String, Peer> getChokingMap() {
+    this.lock.lock();
+		try{
+      return this.chokingMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public void clearChokingMap() {
+    this.chokingMap.clear();
   }
 
   public void printNeighborsInfo() {
