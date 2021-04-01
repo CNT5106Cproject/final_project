@@ -212,7 +212,7 @@ public final class LogHandler {
   }
   // 8. receiving ‘not interested’ message
   public void logReceiveNotInterestMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] received the ‘not interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
   // 9. downloading a piece
