@@ -215,8 +215,13 @@ public class FileManager {
 	 */
 	public synchronized boolean isInterested(String peerId){
 		if(this.interested.size() == 0) return false;
+		
+		logging.writeLog("check isInterested or not");
 		ArrayList<Integer> interested = new ArrayList<Integer>(this.interested);
+
+		logging.writeLog("ineterested in " + interested.size() + " # of blocks");
 		// get intersection of interested and have
+		logging.writeLog(String.format("PeerId: %s retain %s of blocks", peerId, this.otherPeerHave.get(peerId).size()));
 		interested.retainAll(this.otherPeerHave.get(peerId));
 		return (interested.size() != 0);
 	}

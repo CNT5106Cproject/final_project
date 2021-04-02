@@ -192,14 +192,19 @@ public final class LogHandler {
   public void logChangeUnchokedPeer() {
 
   }
+  
   // 4. unchoking
-  public void logUnchoking() {
-
+  public void logUnchoking(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘unchoke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
   }
+
   // 5. choking
-  public void logChoking() {
-
+  public void logChoking(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘choke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
   }
+
   // 6. receiving ‘have’ message
   public void logReceiveHaveMsg(Peer sender) {
     String msg = String.format("Peer [%s] received the ‘have’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());

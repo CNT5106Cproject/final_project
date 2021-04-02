@@ -12,8 +12,9 @@ import utils.ErrorCode;
 import utils.LogHandler;
 public class PeerProcess {
 	private static String peerInfoFN = "PeerInfo.cfg";
-  private static String localPeerInfoFN = "PeerInfo_local.cfg";
+	private static String debugPeerInfoFN = "PeerInfo_debug.cfg";
   private static String SystemInfoFN = "Common.cfg";
+	private static String debugSystemInfoFN = "Common_debug.cfg";
 	private static String cfgDir = "../config/";
 
 	/**
@@ -28,8 +29,12 @@ public class PeerProcess {
 		HashMap<String, Peer> createMap = new HashMap<String, Peer>();
 
 		if (debug) {
-			fileName = localPeerInfoFN;
+			/**
+			 * Use the testing config 
+			 */
+			fileName = debugPeerInfoFN;
 		}
+
 		try {
 			System.out.println(String.format("[%s] Start reading PeerInfo from %s", hostPeerId, cfgDir + fileName));
 			File cfgFile = new File(cfgDir + fileName);
@@ -62,9 +67,15 @@ public class PeerProcess {
 
 	}
 
-	private static void readCommon(String hostPeerId) {
+	private static void readCommon(String hostPeerId, boolean debug) {
 		try {
 			String fileName = SystemInfoFN;
+			if (debug) {
+				/**
+				 * Use the testing config 
+				 */
+				fileName = debugSystemInfoFN;
+			}
 			File cfgFile = new File(cfgDir + fileName);
 			Scanner fileReader = new Scanner(cfgFile);
 			
@@ -96,7 +107,7 @@ public class PeerProcess {
 			}
 			/* Load peer infos */
 			readPeerInfo(args[0], debug);
-			readCommon(args[0]);
+			readCommon(args[0], debug);
 
 			/** Get peer's system parameter */
 			SystemInfo sysInfo = SystemInfo.getSingletonObj();
