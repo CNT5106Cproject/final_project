@@ -4,6 +4,7 @@ import java.net.*;
 import java.io.*;
 import java.nio.*;
 import java.nio.channels.*;
+import java.security.Key;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -84,7 +85,7 @@ public class Server extends Thread{
     */
 		private final ReentrantLock lock = new ReentrantLock();
 		private final static int preferN = sysInfo.getPreferN();
-		private HashMap<String, OutputStream> outStreamMap = new HashMap<String, OutputStream>();
+		private HashMap<String, Socket> connectionMap = new HashMap<String, Socket>();
 		private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
 
 		/**
@@ -102,7 +103,7 @@ public class Server extends Thread{
 		 * Construct select timer
 		 */
 		PreferSelect() {
-			this.outStreamMap = sysInfo.getOutStreamMap();
+			this.connectionMap = sysInfo.getConnectionMap();
 			this.actMsgMap = sysInfo.getActMsgMap();
 		}
 
@@ -169,8 +170,8 @@ public class Server extends Thread{
 			 */
 			int count = 1;
 			try {
-				logging.writeLog("show outStreamMap:");
-				for(Entry<String, OutputStream> n: outStreamMap.entrySet()) {
+				logging.writeLog("show connationMap:");
+				for(Entry<String, Socket> n: connectionMap.entrySet()) {
 					logging.writeLog(n.getKey());
 				}
 
@@ -188,7 +189,8 @@ public class Server extends Thread{
 							if(actMsgMap.get(key) == null) { 
 								throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
 							}
-							actMsgMap.get(key).send(outStreamMap.get(key), ActualMsg.CHOKE, 0);
+							OutputStream outConn = connectionMap.get(key).getOutputStream();
+							actMsgMap.get(key).send(outConn, ActualMsg.CHOKE, 0);
 							unChokingMap.remove(key);
 						}
 						// b+d  put key in chokeMap
@@ -203,7 +205,8 @@ public class Server extends Thread{
 							if(actMsgMap.get(key) == null) { 
 								throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
 							}
-							actMsgMap.get(key).send(outStreamMap.get(key), ActualMsg.UNCHOKE, 0);
+							OutputStream outConn = connectionMap.get(key).getOutputStream();
+							actMsgMap.get(key).send(outConn, ActualMsg.UNCHOKE, 0);
 							chokingMap.remove(key);
 						}
 						// b+d  put key in unchokeMap
@@ -307,7 +310,7 @@ public class Server extends Thread{
 		private Peer server;
 		private Peer client;
 		private ActualMsg actMsg;
-		private HashMap<String, OutputStream> outStreamMap = new HashMap<String, OutputStream>();
+		private HashMap<String, Socket> connectionMap = new HashMap<String, Socket>();
 		private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
 
     public Handler(
@@ -315,13 +318,13 @@ public class Server extends Thread{
 			int no, 
 			Peer hostPeer 
 		) {
-      this.connection = connection;
 	    this.no = no;
 			this.server = hostPeer;
 			this.client = null;
 			this.handShake = null;
 			this.actMsg = null;
-			this.outStreamMap = sysInfo.getOutStreamMap();
+			this.connection = connection;
+			this.connectionMap = sysInfo.getConnectionMap();
 			this.actMsgMap = sysInfo.getActMsgMap();
     }
 
@@ -355,16 +358,18 @@ public class Server extends Thread{
 			 	}
 				
 				/**
-				 * Every connection has it's own
-				 * 1. output stream buffer
+				 * 1. connection
 				 * 2. actual msb obj
 				 * 
 				 * Store them into map for select thread to use it
 				 */
 				this.actMsg = new ActualMsg(this.client);
-				outStreamMap.put(this.client.getId(), outConn);
+				connectionMap.put(this.client.getId(), this.connection);
 				actMsgMap.put(this.client.getId(), this.actMsg);
-				
+				if(connectionMap.get(this.client.getId()) == null || actMsgMap.get(this.client.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missConnection, "missing important object, recreate the socket");
+				}
+
 				/**
 				 * this.ownBitfield is set up at FileManager constructor
 				 */

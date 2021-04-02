@@ -1,6 +1,7 @@
 package peer;
 
 import java.io.OutputStream;
+import java.net.Socket;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -33,7 +34,7 @@ public final class SystemInfo {
   private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
-  private HashMap<String, OutputStream> outStreamMap = new HashMap<String, OutputStream>();
+  private HashMap<String, Socket> connectionMap = new HashMap<String, Socket>();
 	private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
   /**
    * System Parameters from config
@@ -164,24 +165,12 @@ public final class SystemInfo {
     this.chokingMap.clear();
   }
   
-  public HashMap<String, OutputStream> getOutStreamMap() {
-    this.lock.lock();
-		try{
-      return this.outStreamMap;
-		}
-		finally{
-			this.lock.unlock();
-		}
+  public HashMap<String, Socket> getConnectionMap() {
+    return this.connectionMap;
   }
 
   public HashMap<String, ActualMsg> getActMsgMap() {
-    this.lock.lock();
-		try{
-      return this.actMsgMap;
-		}
-		finally{
-			this.lock.unlock();
-		}
+    return this.actMsgMap;
   }
 
   public void printNeighborsInfo() {
