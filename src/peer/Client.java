@@ -18,14 +18,14 @@ public class Client extends Peer implements Runnable {
 	private Peer targetHostPeer;
 	private Socket requestSocket; // socket connect to the server
 	private boolean tryToConnect;
-	private String message; // message send to the server
-	private String MESSAGE; // capitalized message read from the server
 
 	private static LogHandler logging = new LogHandler();
 	private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
 	private static FileManager fm = FileManager.getInstance();
 	private HandShake handShake;
 	private ActualMsg actMsg;
+
+	private boolean isChoked = false;
 
 	/**
 	 * Create connection to target host: targetPort.
@@ -164,20 +164,45 @@ public class Client extends Peer implements Runnable {
 			return true;
 		}
 		else if(msg_type == ActualMsg.HAVE) {
-
+			logging.logReceiveHaveMsg(this.targetHostPeer);
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
 			logging.logChoking(this.targetHostPeer);
 		}
 		else if(msg_type == ActualMsg.UNCHOKE) {
 			logging.logUnchoking(this.targetHostPeer);
+			/**
+			 * 1.choke -> unchoke 
+			 * 		=> set choke to unchoke -> start sending pieces msg until been choked
+			 * 2. unchoke -> unchoke
+			 * 		=> continue sending pieces message 
+			 */
+			requestingPiece(this.targetHostPeer, outConn);
+			// if(isChoked) {
+			// 	isChoked = false;
+			// 	requestingPiece(this.targetHostPeer);
+			// }
 		}
 		else if(msg_type == ActualMsg.PIECE) {
-
+			logging.logReceivePieceMsg(this.targetHostPeer);
 		}
 		return false;
 	}
 
+	/**
+	 * 1. request piece
+	 * 2. check piece received
+	 * 3. 
+	 * @param sender
+	 * @param outConn
+	 * @return
+	 * @throws IOException
+	 */
+	private int requestingPiece(Peer sender, OutputStream outConn) throws IOException {
+		this.actMsg.send(outConn, ActualMsg.REQUEST, fm.pickInterestedFileBlock(sender.getId()));
+		// check piece is received 
+		return 0;
+	}
 	/**
 	 * 
 	 * @param args

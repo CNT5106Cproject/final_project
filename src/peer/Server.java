@@ -412,14 +412,32 @@ public class Server extends Thread{
 		private boolean reactions(byte msg_type) throws IOException{
 			if(msg_type == ActualMsg.INTERESTED) {
 				logging.logReceiveInterestMsg(this.client);
-				setNeighborIN(this.client.getId(), true);
+				setNeighborIntStatus(this.client.getId(), true);
 			}
 			else if(msg_type == ActualMsg.NOTINTERESTED) {
 				logging.logReceiveNotInterestMsg(this.client);
-				setNeighborIN(this.client.getId(), false);
+				setNeighborIntStatus(this.client.getId(), false);
 			}
 			else if(msg_type == ActualMsg.REQUEST) {
+				/**
+				 * Send back the request piece
+				 * 1. read block
+				 * 2. send 
+				 */
+				logging.logReceiveRequestMsg(this.client);
+				OutputStream outConn = this.connection.getOutputStream();
+				
+				int blockIdx = this.actMsg.shortMsg.getBlockIdx();
+				int blockLen = this.actMsg.shortMsg.getMsgLen();
+				byte[] data = new byte[blockLen];
+				fm.read(blockIdx, data, blockLen);
 
+				this.actMsg.send(
+					outConn, 
+					ActualMsg.PIECE, 
+					blockIdx, 
+					data
+				);
 			}
 			return false;
 		}
@@ -429,7 +447,7 @@ public class Server extends Thread{
 		 * @param peerId
 		 * @param status
 		 */
-		private synchronized void setNeighborIN(String peerId, boolean status) {
+		private synchronized void setNeighborIntStatus(String peerId, boolean status) {
 			Peer p = sysInfo.getNeighborMap().get(peerId);
 			p.setIsInterested(status);
 			sysInfo.getNeighborMap().put(peerId, p);

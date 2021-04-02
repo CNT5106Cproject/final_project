@@ -210,16 +210,19 @@ public final class LogHandler {
     String msg = String.format("Peer [%s] received the ‘have’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
+
   // 7. receiving ‘interested’ message
   public void logReceiveInterestMsg(Peer sender) {
     String msg = String.format("Peer [%s] received the ‘interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
+
   // 8. receiving ‘not interested’ message
   public void logReceiveNotInterestMsg(Peer sender) {
     String msg = String.format("Peer [%s] received the ‘not interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
+
   // 9. downloading a piece
   public void logDownload(Peer sender, int blockIdx, int numBlocks) {
     String msg = String.format(
@@ -231,6 +234,7 @@ public final class LogHandler {
     );
     logger.info(msg);
   }
+
   // 10. completion of download
   public void logCompleteFile() {
     String msg = String.format("Peer [%s] has downloaded the complete file.  ", sysInfo.getHostPeer().getId());
@@ -260,6 +264,16 @@ public final class LogHandler {
 
   public void logBitFieldMsg(Peer sender) {
     String msg = String.format("Peer [%s] (client) received the ‘bitfield’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logReceiveRequestMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (server) received the ‘request’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logReceivePieceMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (client) received the ‘piece’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 }
