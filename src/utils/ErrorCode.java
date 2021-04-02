@@ -19,10 +19,11 @@ public class ErrorCode {
   public static int missSystemInfo = 4000;
   public static int missLogHandler = 4001;
   public static int missFileManager = 4002;
+  public static int missOutStreamObj = 4003;
+  public static int missActMsgObj = 4004;
 
   /**
   * System error
-  * - parse error
   */
   public static int failParsePeerInfo = 5000;
   public static int failHandshake = 5001;
