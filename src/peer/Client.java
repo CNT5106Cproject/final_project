@@ -167,10 +167,10 @@ public class Client extends Peer implements Runnable {
 
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
-
+			logging.logChoking(this.targetHostPeer);
 		}
 		else if(msg_type == ActualMsg.UNCHOKE) {
-
+			logging.logUnchoking(this.targetHostPeer);
 		}
 		else if(msg_type == ActualMsg.PIECE) {
 

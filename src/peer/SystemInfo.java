@@ -1,5 +1,6 @@
 package peer;
 
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -30,9 +31,10 @@ public final class SystemInfo {
   private Peer host;
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
-  // This map 
+  private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
-
+  private HashMap<String, OutputStream> outStreamMap = new HashMap<String, OutputStream>();
+	private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
   /**
    * System Parameters from config
    */
@@ -106,11 +108,6 @@ public final class SystemInfo {
     }
   }
 
-  /**
-  * Get peer infos 
-  * - host
-  * - neighborMap -> all neighbors with there peer obj
-  */
   public Peer getHostPeer() {
     return this.host;
   }
@@ -139,6 +136,20 @@ public final class SystemInfo {
     this.interestMap.clear();
   }
 
+  public HashMap<String, Peer> getUnChokingMap() {
+    this.lock.lock();
+		try{
+      return this.unChokingMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public void clearUnChokingMap() {
+    this.unChokingMap.clear();
+  }
+
   public HashMap<String, Peer> getChokingMap() {
     this.lock.lock();
 		try{
@@ -151,6 +162,26 @@ public final class SystemInfo {
 
   public void clearChokingMap() {
     this.chokingMap.clear();
+  }
+  
+  public HashMap<String, OutputStream> getOutStreamMap() {
+    this.lock.lock();
+		try{
+      return this.outStreamMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public HashMap<String, ActualMsg> getActMsgMap() {
+    this.lock.lock();
+		try{
+      return this.actMsgMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
   }
 
   public void printNeighborsInfo() {

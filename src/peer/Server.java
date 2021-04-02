@@ -16,6 +16,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
+import utils.ErrorCode;
 import utils.LogHandler;
 import utils.Tools;
 
@@ -27,7 +28,7 @@ public class Server extends Thread{
 	private static LogHandler logging = new LogHandler();
 	private Timer PreferSelectTimer = new Timer();
 	private Timer OptSelectTimer = new Timer();
-	
+
 	public Server() {
 		this.hostPeer = sysInfo.getHostPeer();
 	}
@@ -50,7 +51,11 @@ public class Server extends Thread{
 
 				int clientNum = 0;
 				while(true) {
-					new Handler(listener.accept(), clientNum, this.hostPeer).start();
+					new Handler(
+						listener.accept(), 
+						clientNum,
+						this.hostPeer
+					).start();
 					// System.out.println("Client "  + clientNum + " is connected!");
 					
 					logging.writeLog(String.format(
@@ -79,28 +84,33 @@ public class Server extends Thread{
     */
 		private final ReentrantLock lock = new ReentrantLock();
 		private final static int preferN = sysInfo.getPreferN();
-		ArrayList<Entry<String, Peer>> bestNeighbors;
-		private ActualMsg actMsg;
+		private HashMap<String, OutputStream> outStreamMap = new HashMap<String, OutputStream>();
+		private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
 
 		/**
 		 * Select k neighbors from the interesting list
 		 */
 		private HashMap<String, Peer> neighborMap = sysInfo.getNeighborMap();;
 		private HashMap<String, Peer> interestMap = sysInfo.getInterestMap();
-		private HashMap<String, Peer> previousChokeMap = null;
+		private HashMap<String, Peer> unChokingMap = sysInfo.getUnChokingMap();
+		private HashMap<String, Peer> chokingMap = sysInfo.getChokingMap();
 
 		private boolean randomlySelect = false;
 		Random R = new Random();
 
+		/**
+		 * Construct select timer
+		 */
 		PreferSelect() {
-			this.actMsg = new ActualMsg();
+			this.outStreamMap = sysInfo.getOutStreamMap();
+			this.actMsgMap = sysInfo.getActMsgMap();
 		}
 
 		/**
 		 * 1. update neighbor map
 		 * 2. update interest map 
 		 * 3. random select | picked by download rate
-		 * 4. update chokelist, send choke & unchoke message
+		 * 4. depend on the situation to handle the selected nodes and unselected nodes
 		 */
 		public void run() {
 			logging.writeLog("Start PreferSelect - selecting the nodes to pass file pieces");
@@ -122,53 +132,118 @@ public class Server extends Thread{
 			/**
 			 * Pick k interested neighbors
 			 * 3. random select | picked by download rate
+			 * 4. depend on the situation to handle the selected nodes and unselected nodes
+			 * 		a.unchoke -> unchoke => put key in unchokeMap (continue receiving 'request in the reading buffer')
+			 * 		b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
+			 * 		c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap
+			 * 		d.choke -> choke => put key in chokeMap
 			 */
-			if(randomlySelect) {
-				logging.writeLog("selecting interested node randomly");
-				if(!interestMap.isEmpty()) {
-					List<Entry<String, Peer>> interestList = sortHashMapByDownload(interestMap);
-					for(Entry<String, Peer> i: interestList) {
-						logging.writeLog(String.format("%s download rate: %s", i.getKey(), i.getValue().getDownloadRate()));
-					}
-				}
-			}
-			else {
-				logging.writeLog("selecting interested node by download rate");
-				if(!interestMap.isEmpty()) {
-					// Sort the interested node in order of the download rate 
-					logging.writeLog("[IMPORTANT] set interestList in order by download rate");
-					List<Entry<String, Peer>> interestList = sortHashMapByDownload(interestMap);
-					for(Entry<String, Peer> i: interestList) {
-						logging.writeLog(String.format("%s download rate: %s", i.getKey(), i.getValue().getDownloadRate()));
-					}
-					
-					previousChokeMap = sysInfo.getChokingMap();
-					sysInfo.clearChokingMap();
-					int count = 1;
-				
-					for(Entry<String, Peer> i: interestList) {
-						if(count > preferN) {
-							// Not been picked, choke them
-							previousChokeMap.put(i.getKey(), i.getValue());
-						}
-						else {
-							// check if peer is choked in previous round;
-							if(previousChokeMap.get(i.getKey()) == null) {
-								// send unchoke;
-								// this.actMsg.send(outConn, ActualMsg.BITFIELD, fm.getOwnBitfield());
-							}
-						}
-						count ++;
-					}
-				}
-			}
+			selectNodes();
 		}
 
-		private List<Entry<String, Peer>> sortHashMapByDownload(HashMap<String, Peer> targetMap) {
-			logging.writeLog("start sortHashMapByDownload with targetMap size: " + targetMap.size());
-			if(targetMap.size() > 0) {
-				List<Entry<String, Peer>> targetList = new ArrayList<Entry<String, Peer>>(targetMap.entrySet());
+		private int selectNodes() {
+			logging.writeLog("selecting interested node");
+			if(interestMap.isEmpty()) return 0;
+			
+			List<Entry<String, Peer>> interestList = new ArrayList<Entry<String, Peer>>(interestMap.entrySet());
+			logging.writeLog("interestList size: " + interestList.size());
+
+			if(interestMap.size() > preferN) {
+				/**
+				 * 3. random select | picked by download rate
+				 */
+				if(randomlySelect) {
+					interestList = shuffleByRandom(interestList);
+				}
+				else {
+					interestList = sortByDownload(interestList);
+				}
+			}
+
+			for(Entry<String, Peer> i: interestList) {
+				logging.writeLog(String.format("%s download rate: %s", i.getKey(), i.getValue().getDownloadRate()));
+			}
+
+			/**
+			 * 4. depend on the situation to handle the selected nodes and unselected nodes
+			 */
+			int count = 1;
+			try {
+				logging.writeLog("show outStreamMap:");
+				for(Entry<String, OutputStream> n: outStreamMap.entrySet()) {
+					logging.writeLog(n.getKey());
+				}
+
+				logging.writeLog("show actMsgMap:");
+				for(Entry<String, ActualMsg> n: actMsgMap.entrySet()) {
+					logging.writeLog(n.getKey());
+				}
+
+				for(Entry<String, Peer> i: interestList) {
+					if(count > preferN) {
+						// Not been picked, choke them
+						if(unChokingMap.get(i.getKey()) != null) {
+							// b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
+							String key = i.getKey();
+							if(actMsgMap.get(key) == null) { 
+								throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
+							}
+							actMsgMap.get(key).send(outStreamMap.get(key), ActualMsg.CHOKE, 0);
+							unChokingMap.remove(key);
+						}
+						// b+d  put key in chokeMap
+						chokingMap.put(i.getKey(), i.getValue());
+					}
+					else {
+						// Been picked, unchoke them
+						if(chokingMap.get(i.getKey()) != null) {
+							// c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap  
+							String key = i.getKey();
+							
+							if(actMsgMap.get(key) == null) { 
+								throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
+							}
+							actMsgMap.get(key).send(outStreamMap.get(key), ActualMsg.UNCHOKE, 0);
+							chokingMap.remove(key);
+						}
+						// b+d  put key in unchokeMap
+						unChokingMap.put(i.getKey(), i.getValue());
+					}
+					count ++;
+				}
 				
+				logging.writeLog("show chokingMap:");
+				for(Entry<String, Peer> n: chokingMap.entrySet()) {
+					logging.writeLog(n.getKey());
+				}
+
+				logging.writeLog("show unChokingMap:");
+				for(Entry<String, Peer> n: unChokingMap.entrySet()) {
+					logging.writeLog(n.getKey());
+				}
+			}
+			catch(CustomExceptions e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", trace);
+			}
+			catch(IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "Server PreferSelect Timer sending msg failed:" + trace);
+			}
+			
+
+			return 0;
+		}
+
+		private List<Entry<String, Peer>> shuffleByRandom(List<Entry<String, Peer>> interestList) {
+			logging.writeLog("start shuffleByRandom with interestList size: " + interestList.size());
+			Collections.shuffle(interestList, R);
+			return interestList;
+		}
+
+		private List<Entry<String, Peer>> sortByDownload(List<Entry<String, Peer>> interestList) {
+			logging.writeLog("start sortByDownload with interestList size: " + interestList.size());
+			if(interestList.size() > 0) {
 				/**
 				 * Compare the peer objects downloading rate
 				 */
@@ -187,8 +262,8 @@ public class Server extends Thread{
 					}
 				};
 				
-				Collections.sort(targetList, rate);
-				return targetList;
+				Collections.sort(interestList, rate);
+				return interestList;
 			}
 			return null;
 		}
@@ -232,14 +307,22 @@ public class Server extends Thread{
 		private Peer server;
 		private Peer client;
 		private ActualMsg actMsg;
+		private HashMap<String, OutputStream> outStreamMap = new HashMap<String, OutputStream>();
+		private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
 
-    public Handler(Socket connection, int no, Peer hostPeer) {
+    public Handler(
+			Socket connection, 
+			int no, 
+			Peer hostPeer 
+		) {
       this.connection = connection;
 	    this.no = no;
 			this.server = hostPeer;
 			this.client = null;
 			this.handShake = null;
 			this.actMsg = null;
+			this.outStreamMap = sysInfo.getOutStreamMap();
+			this.actMsgMap = sysInfo.getActMsgMap();
     }
 
     public void run() {
@@ -270,10 +353,21 @@ public class Server extends Thread{
 						}
 					}
 			 	}
+				
+				/**
+				 * Every connection has it's own
+				 * 1. output stream buffer
+				 * 2. actual msb obj
+				 * 
+				 * Store them into map for select thread to use it
+				 */
+				this.actMsg = new ActualMsg(this.client);
+				outStreamMap.put(this.client.getId(), outConn);
+				actMsgMap.put(this.client.getId(), this.actMsg);
+				
 				/**
 				 * this.ownBitfield is set up at FileManager constructor
 				 */
-				this.actMsg = new ActualMsg(this.client);
 				this.actMsg.send(outConn, ActualMsg.BITFIELD, fm.getOwnBitfield());
 				logging.logSendBitFieldMsg(this.client);
 				
