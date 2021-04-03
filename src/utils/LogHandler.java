@@ -237,7 +237,7 @@ public final class LogHandler {
 
   // 10. completion of download
   public void logCompleteFile() {
-    String msg = String.format("Peer [%s] has downloaded the complete file.  ", sysInfo.getHostPeer().getId());
+    String msg = String.format("Peer [%s] has downloaded the complete file.", sysInfo.getHostPeer().getId());
     logger.info(msg);
   }
   

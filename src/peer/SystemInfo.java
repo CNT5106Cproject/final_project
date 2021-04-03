@@ -18,8 +18,9 @@ public final class SystemInfo {
   private final ReentrantLock lock = new ReentrantLock();
   private static SystemInfo singletonObj = null;
 
-  private static int retryLimit = 100;
-  private static int retryInr = 3; // retry interval 
+  private static int retryLimit = 10;
+  private static long retryInr = 3000; // retry interval (ms)
+  private static long clientRequestPieceInr = 1000; // (ms)
 
   /**
    * Host peer infos
@@ -220,7 +221,11 @@ public final class SystemInfo {
     return SystemInfo.retryLimit;
   }
 
-  public int getRetryInterval() {
+  public long getRetryInterval() {
     return SystemInfo.retryInr;
+  }
+
+  public long getClientRequestPieceInr() {
+    return SystemInfo.clientRequestPieceInr;
   }
 }
