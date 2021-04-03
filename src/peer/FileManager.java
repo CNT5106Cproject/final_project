@@ -246,6 +246,17 @@ public class FileManager {
 		return blockIdx;
 	}
 	/**
+	 * Gets the block size.
+	 *
+	 * @param      blockIdx  The block index
+	 *
+	 * @return     The block size.
+	 */
+	public int getBlockSize(int blockIdx){
+		if(blockIdx < 0 || blockIdx >= this.blockNum) return -1;
+		return (blockIdx == this.blockNum-1)? this.lastBlockSize: this.blockSize;
+	}
+	/**
 	 * read bytes in blockIdx block to b
 	 *
 	 * @param      blockIdx  The block index
@@ -299,8 +310,7 @@ public class FileManager {
 			return -1;
 		}
 		if(blockIdx >= this.blockNum || blockIdx < 0 ||
-			(blockIdx != this.blockNum-1 && len != this.blockSize) || 
-			(blockIdx == this.blockNum-1 && len != this.lastBlockSize)){
+			getBlockSize(blockIdx) != len){
 			System.err.println("FileManager write: erroneous parameter");
 			return -1;
 		}
