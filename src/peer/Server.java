@@ -428,7 +428,7 @@ public class Server extends Thread{
 				OutputStream outConn = this.connection.getOutputStream();
 				
 				int blockIdx = this.actMsg.shortMsg.getBlockIdx();
-				int blockLen = this.actMsg.shortMsg.getMsgLen();
+				int blockLen = fm.getBlockSize(blockIdx);
 				byte[] data = new byte[blockLen];
 				fm.read(blockIdx, data, blockLen);
 
