@@ -25,8 +25,6 @@ public class Client extends Peer implements Runnable {
 	private HandShake handShake;
 	private ActualMsg actMsg;
 
-	private boolean isChoked = false;
-
 	/**
 	 * Create connection to target host: targetPort.
 	 * Which store in Peer object
@@ -94,40 +92,48 @@ public class Client extends Peer implements Runnable {
 						if(msg_type != -1) {
 							reactions(msg_type, outConn);
 							if(fm != null && fm.isComplete()) {
+								// The file download has complete
+								logging.logCompleteFile();
 								return;
 							}
 						}
 					}
 				}
 				catch (ConnectException e) {
+					String trace = Tools.getStackTrace(e);
 					logging.logConnError(clientPeer, targetHostPeer);
-					// recreate socket after time delay
-					recreate_connection();
+					logging.writeLog("warning", 
+						"(Client thread) ConnectException with client: " + targetHostPeer.getId() + ", ex:" + trace
+					);
+					recreate_connection(targetHostPeer);
 				}
 				catch(CustomExceptions e){
 					String trace = Tools.getStackTrace(e);
-					logging.writeLog("severe", trace);
-
-					recreate_connection();
+					logging.writeLog("warning", 
+						"(Client thread) CustomExceptions with client: " + targetHostPeer.getId() + ", ex:" + trace
+					);
+					recreate_connection(targetHostPeer);
 				}
 				catch(IOException e){
 					String trace = Tools.getStackTrace(e);
-					logging.writeLog("severe", "client thread IO exception, ex:" + trace);
-
-					recreate_connection();
+					logging.writeLog("warning", 
+						"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
+					);
+					recreate_connection(targetHostPeer);
 				}
 			}
-
-			// The file download has complete
-			logging.logCompleteFile();
-		}			
+		}
 		finally{
 			try{
 				if(requestSocket != null) {
-					logging.writeLog("close client connection");
+					logging.writeLog(
+						"(Client thread) close client connection with client: " + targetHostPeer.getId()
+					);
 					requestSocket.close();
 				}
-				logging.writeLog("close client thread");
+				logging.writeLog(
+					"(Client thread) close client thread with: " + targetHostPeer.getId()
+				);
 			}
 			catch(IOException e){
 				logging.writeLog("severe", "Client close connection failed, ex:" + e);
@@ -138,7 +144,8 @@ public class Client extends Peer implements Runnable {
 	/**
 	 * Client thread - recreate socket connection with target host peer
 	 */
-	private void recreate_connection() {
+	private void recreate_connection(Peer targetHostPeer) {
+		logging.writeLog("warning", "RECONNECTING Peer [" + targetHostPeer.getId() + "]" );
 		Tools.timeSleep(sysInfo.getRetryInterval());
 		tryToConnect = true;
 		this.handShake = null;
@@ -171,6 +178,9 @@ public class Client extends Peer implements Runnable {
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
 			logging.logChoking(this.targetHostPeer);
+			if(!clientPeer.getIsChoking()) {
+				clientPeer.setChoking();
+			}
 		}
 		else if(msg_type == ActualMsg.UNCHOKE) {
 			logging.logUnchoking(this.targetHostPeer);
@@ -180,18 +190,17 @@ public class Client extends Peer implements Runnable {
 			 * 2. unchoke -> unchoke
 			 * 		=> continue sending pieces message 
 			 */
-			requestingPiece(this.targetHostPeer, outConn);
-			// if(isChoked) {
-			// 	isChoked = false;
-			// 	requestingPiece(this.targetHostPeer);
-			// }
+			if(clientPeer.getIsChoking()) {
+				clientPeer.setUnChoking();
+				requestingPiece(this.targetHostPeer, outConn);
+			}
 		}
 		else if(msg_type == ActualMsg.PIECE) {
 			logging.logReceivePieceMsg(this.targetHostPeer);
 			int blockIdx = this.actMsg.pieceMsg.blockIdx;
-			logging.writeLog("receive piece: " + blockIdx + " from " + this.targetHostPeer.getId());
 			int blockLen = fm.getBlockSize(blockIdx);
 			fm.write(blockIdx, this.actMsg.pieceMsg.getData(), blockLen);
+			logging.logDownload(this.targetHostPeer, blockIdx, fm.getOwnBitfieldSize());
 		}
 		return false;
 	}
@@ -206,8 +215,22 @@ public class Client extends Peer implements Runnable {
 	 * @throws IOException
 	 */
 	private int requestingPiece(Peer sender, OutputStream outConn) throws IOException {
-		this.actMsg.send(outConn, ActualMsg.REQUEST, fm.pickInterestedFileBlock(sender.getId()));
-		// check piece is received 
+		int requestBlockIdx = fm.pickInterestedFileBlock(sender.getId());
+		
+		logging.writeLog("requestBlockIdx: :" + requestBlockIdx);
+		this.actMsg.send(outConn, ActualMsg.REQUEST, requestBlockIdx);
+		
+		// int retry = 0;
+		// logging.writeLog("check blockIdx by bitField :" + requestBlockIdx);
+		// while(!fm.isOwnBitfieldContain(requestBlockIdx) && retry < sysInfo.getRetryLimit()) {
+		// 	logging.writeLog("retry: " + retry);
+		// 	Tools.timeSleep(sysInfo.getClientRequestPieceInr());
+		// 	retry++;
+		// }
+
+		// if(clientPeer.getIsChoking()) return 1;
+		// // continue request;
+		// requestingPiece(sender, outConn);
 		return 0;
 	}
 	/**

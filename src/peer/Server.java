@@ -170,7 +170,7 @@ public class Server extends Thread{
 			 */
 			int count = 1;
 			try {
-				logging.writeLog("show connationMap:");
+				logging.writeLog("show connectionMap:");
 				for(Entry<String, Socket> n: connectionMap.entrySet()) {
 					logging.writeLog(n.getKey());
 				}
@@ -366,8 +366,13 @@ public class Server extends Thread{
 				this.actMsg = new ActualMsg(this.client);
 				connectionMap.put(this.client.getId(), this.connection);
 				actMsgMap.put(this.client.getId(), this.actMsg);
-				if(connectionMap.get(this.client.getId()) == null || actMsgMap.get(this.client.getId()) == null) {
-					throw new CustomExceptions(ErrorCode.missConnection, "missing important object, recreate the socket");
+
+				if(connectionMap.get(this.client.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missConnection, "missing connection object, recreate the socket");
+				}
+
+				if(actMsgMap.get(this.client.getId()) == null) {
+					actMsgMap.put(this.client.getId(), this.actMsg);
 				}
 
 				/**
@@ -386,11 +391,13 @@ public class Server extends Thread{
 			}
 			catch(CustomExceptions e){
 				String trace = Tools.getStackTrace(e);
-				logging.writeLog("severe", trace);
+				String peerId = this.client != null ? this.client.getId() : "";
+				logging.writeLog("severe", "(Server thread) CustomExceptions with client: " + peerId + ", ex:" + trace);
 			}
 			catch(IOException e){
 				String trace = Tools.getStackTrace(e);
-				logging.writeLog("severe", "Server thread IO exception, ex:" + trace);
+				String peerId = this.client != null ? this.client.getId() : "";
+				logging.writeLog("severe", "(Server thread) IOException with client: " + peerId + ", ex:" + trace);
 			}
 			finally {
 			// Close connections
@@ -398,8 +405,27 @@ public class Server extends Thread{
 					connection.close();
 				}
 				catch(IOException e){
-					logging.writeLog("severe", "Server close connection failed, ex:" + e);
+					String trace = Tools.getStackTrace(e);
+					String peerId = this.client != null ? this.client.getId() : "";
+					logging.writeLog("severe", "(Server thread) close connection failed : " + peerId + ", ex:" + trace);
 				}
+			}
+			removePeerFromMap();
+			return;
+		}
+		
+		private void removePeerFromMap() {
+			if(sysInfo.getNeighborMap().get(this.client.getId()) != null) {
+				sysInfo.getNeighborMap().remove(this.client.getId());
+			}
+			if(sysInfo.getInterestMap().get(this.client.getId()) != null) {
+				sysInfo.getInterestMap().remove(this.client.getId());
+			}
+			if(sysInfo.getChokingMap().get(this.client.getId()) != null) {
+				sysInfo.getChokingMap().remove(this.client.getId());
+			}
+			if(sysInfo.getUnChokingMap().get(this.client.getId()) != null) {
+				sysInfo.getUnChokingMap().remove(this.client.getId());
 			}
 		}
 
