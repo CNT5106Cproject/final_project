@@ -93,6 +93,9 @@ public class Client extends Peer implements Runnable {
 						msg_type = actMsg.recv(inConn);
 						if(msg_type != -1) {
 							reactions(msg_type, outConn);
+							if(fm != null && fm.isComplete()) {
+								return;
+							}
 						}
 					}
 				}
@@ -185,6 +188,9 @@ public class Client extends Peer implements Runnable {
 		}
 		else if(msg_type == ActualMsg.PIECE) {
 			logging.logReceivePieceMsg(this.targetHostPeer);
+			int blockIdx = this.actMsg.pieceMsg.blockIdx;
+			int blockLen = this.actMsg.pieceMsg.getData().length;
+			fm.write(blockIdx, this.actMsg.pieceMsg.getData(), blockLen);
 		}
 		return false;
 	}
