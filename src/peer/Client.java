@@ -189,6 +189,7 @@ public class Client extends Peer implements Runnable {
 		else if(msg_type == ActualMsg.PIECE) {
 			logging.logReceivePieceMsg(this.targetHostPeer);
 			int blockIdx = this.actMsg.pieceMsg.blockIdx;
+			logging.writeLog("receive piece: " + blockIdx + " from " + this.targetHostPeer.getId());
 			int blockLen = this.actMsg.pieceMsg.getData().length;
 			fm.write(blockIdx, this.actMsg.pieceMsg.getData(), blockLen);
 		}
