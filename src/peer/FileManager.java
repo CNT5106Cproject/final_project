@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.ArrayList;
+import java.util.BitSet;
 public class FileManager {
 	public final String fileName;
 	public final int fileLength;
@@ -106,9 +107,20 @@ public class FileManager {
 		this.ownBitfield[blockIdx/8] |= FileManager.bitFlag[blockIdx%8];
 		// printByteArray(this.ownBitfield);
 	}
+
+	public boolean isOwnBitfieldContain(int blockIdx){
+		return ((byte)(this.ownBitfield[blockIdx/8] & FileManager.bitFlag[blockIdx%8]) != 0);
+	}
+	
+	public int getOwnBitfieldSize(){
+		printByteArray(this.ownBitfield);
+		return BitSet.valueOf(this.ownBitfield).cardinality();
+	}
+
 	private void printByteArray(byte[] bytes){
 		for (byte b : bytes) {
-			System.out.println(Integer.toBinaryString(b & 255 | 256).substring(1));
+			logging.writeLog(Integer.toBinaryString(b & 255 | 256).substring(1));
+			//System.out.println(Integer.toBinaryString(b & 255 | 256).substring(1));
 		}
 	}
 	/**
