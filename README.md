@@ -14,6 +14,19 @@
 6. FileManager (Jim)
 7. LogHandler (YiMing)
 
+## How to test?
+Test locally with script, test on the remote host are still working on.
+
+### Locally 
+1. compile - run script **/final_project/src/compileProcess.sh**
+2. start process - run **/final_project/src/test/startTestingPeers.sh**
+3. kill process if needed - run **/final_project/src/test/killAllTestingPeer.sh**
+
+- The process will read the config under the directory **/final_project/src/config/**
+- If the debug flag in peerProcess is true --> it reads **PeerInfo_local.cfg**
+
+
+
 ## 5. ActualMsg
 - Class ActualMsg categorize the type of the msg and serialize them into object.
 
