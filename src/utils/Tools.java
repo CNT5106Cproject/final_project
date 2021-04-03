@@ -5,9 +5,9 @@ import java.io.StringWriter;
 import java.util.concurrent.TimeUnit;
 
 public class Tools {
-  public static void timeSleep(int sec) {
+  public static void timeSleep(long milleSec) {
     try {
-      TimeUnit.SECONDS.sleep(sec);
+      TimeUnit.MILLISECONDS.sleep(milleSec);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
