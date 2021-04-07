@@ -24,6 +24,10 @@ public class Peer {
   private boolean isChoking = false;
   private boolean isDownLoading = false;
   private double downloadRate = 0.0;
+  /**
+   * Using to check if every other node is finish
+   */
+  private boolean isFinish = false;
   
   public Peer() {
     
@@ -85,6 +89,10 @@ public class Peer {
 
   public boolean getHasFile() {
     return this.hasFile;
+  }
+
+  public boolean getIsFinish() {
+    return isFinish;
   }
 
   /**
@@ -150,4 +158,8 @@ public class Peer {
       this.lock.unlock();
     }
 	}
+
+  public void setIsFinish() {
+    this.isFinish = true;
+  }
 }

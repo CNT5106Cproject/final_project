@@ -179,6 +179,7 @@ public class Client extends Peer implements Runnable {
 		else if(msg_type == ActualMsg.CHOKE) {
 			logging.logChoking(this.targetHostPeer);
 			if(!clientPeer.getIsChoking()) {
+				logging.writeLog("execute setChoking");
 				clientPeer.setChoking();
 			}
 		}
@@ -191,9 +192,10 @@ public class Client extends Peer implements Runnable {
 			 * 		=> continue sending pieces message 
 			 */
 			if(clientPeer.getIsChoking()) {
+				logging.writeLog("execute setUnChoking");
 				clientPeer.setUnChoking();
-				requestingPiece(this.targetHostPeer, outConn);
 			}
+			requestingPiece(this.targetHostPeer, outConn);
 		}
 		else if(msg_type == ActualMsg.PIECE) {
 			logging.logReceivePieceMsg(this.targetHostPeer);
@@ -201,6 +203,14 @@ public class Client extends Peer implements Runnable {
 			int blockLen = fm.getBlockSize(blockIdx);
 			fm.write(blockIdx, this.actMsg.pieceMsg.getData(), blockLen);
 			logging.logDownload(this.targetHostPeer, blockIdx, fm.getOwnBitfieldSize());
+			sysInfo.addNewObtainBlocks(blockIdx);
+			
+			// TODO add piece to new obtain list 
+			if(clientPeer.getIsChoking()) {
+				logging.writeLog("unable continue requesting, peer has been choked");
+				return true;
+			}
+			requestingPiece(this.targetHostPeer, outConn);
 		}
 		return false;
 	}
@@ -216,21 +226,8 @@ public class Client extends Peer implements Runnable {
 	 */
 	private int requestingPiece(Peer sender, OutputStream outConn) throws IOException {
 		int requestBlockIdx = fm.pickInterestedFileBlock(sender.getId());
-		
 		logging.writeLog("requestBlockIdx: :" + requestBlockIdx);
 		this.actMsg.send(outConn, ActualMsg.REQUEST, requestBlockIdx);
-		
-		// int retry = 0;
-		// logging.writeLog("check blockIdx by bitField :" + requestBlockIdx);
-		// while(!fm.isOwnBitfieldContain(requestBlockIdx) && retry < sysInfo.getRetryLimit()) {
-		// 	logging.writeLog("retry: " + retry);
-		// 	Tools.timeSleep(sysInfo.getClientRequestPieceInr());
-		// 	retry++;
-		// }
-
-		// if(clientPeer.getIsChoking()) return 1;
-		// // continue request;
-		// requestingPiece(sender, outConn);
 		return 0;
 	}
 	/**

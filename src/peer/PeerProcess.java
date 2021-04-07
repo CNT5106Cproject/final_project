@@ -149,7 +149,7 @@ public class PeerProcess {
 				}
 			}
 			else {
-				logging.writeLog("(peer process) Peer hasFile is is true, no need start client threads");
+				logging.writeLog("(peer process) Peer hasFile is true, no need start client threads to receive from others");
 			}
 
 			logging.writeLog("(peer process) Number of thread create by peer: " + java.lang.Thread.activeCount());
