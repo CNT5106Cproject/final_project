@@ -4,7 +4,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
-import utils.LogHandler;
 import utils.Tools;
 
 public class Peer {
