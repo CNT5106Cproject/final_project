@@ -94,6 +94,7 @@ public class Client extends Peer implements Runnable {
 							if(fm != null && fm.isComplete()) {
 								// The file download has complete
 								logging.logCompleteFile();
+								// send end message
 								return;
 							}
 						}
@@ -175,6 +176,20 @@ public class Client extends Peer implements Runnable {
 		}
 		else if(msg_type == ActualMsg.HAVE) {
 			logging.logReceiveHaveMsg(this.targetHostPeer);
+
+			int blockIdx = this.actMsg.shortMsg.getBlockIdx();
+			logging.writeLog(String.format("%s send have to notify obtaining new block: %s", 
+				this.targetHostPeer.getId(),
+				blockIdx
+			));
+			fm.updateHave(this.targetHostPeer.getId(), blockIdx);
+			if(fm.isInterested(this.targetHostPeer.getId())) {
+				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
+			}
+			else {
+				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
+			}
+			return true;
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
 			logging.logChoking(this.targetHostPeer);
