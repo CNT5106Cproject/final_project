@@ -2,6 +2,8 @@ package peer;
 
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -20,15 +22,17 @@ public final class SystemInfo {
 
   private static int retryLimit = 10;
   private static long retryInr = 3000; // retry interval (ms)
-  private static long clientRequestPieceInr = 1000; // (ms)
+  private static long clientRequestPieceInr = 1500; // (ms)
 
   /**
-   * Host peer infos
+   * Host peer objects
    * - host 
    * - neighborMap
-   * - chokingMap 
-   *    The choking-unChoking interval will assigns new value to this object,
-   *    The opt unChoking interval will use this object to pick opt node.
+   * - chokingMap, unChokingMap
+   *    The choking-unChoking interval will update these two map,
+   *    To picked the sending candidate to send piece.
+   * - connectionMap, asgMsgMap 
+   *    Use for communicating between Interval thread and main Server thread.
    */
   private Peer host;
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
@@ -37,6 +41,9 @@ public final class SystemInfo {
   private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
   private HashMap<String, Socket> connectionMap = new HashMap<String, Socket>();
 	private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
+  
+  private List<Integer> blockList  = new ArrayList<Integer>();
+  private List<Integer> newObtainBlocks = Collections.synchronizedList(blockList);
   /**
    * System Parameters from config
    */
@@ -54,8 +61,8 @@ public final class SystemInfo {
   
   public SystemInfo(Peer host, HashMap<String, Peer> neighborMap) {
     singletonObj = new SystemInfo();
-    singletonObj.setHostPeer(host);
-    singletonObj.setPeerList(neighborMap);
+    singletonObj.initHostPeer(host);
+    singletonObj.initNeighborMap(neighborMap);
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -69,7 +76,7 @@ public final class SystemInfo {
     * FileSize 2167705
     * PieceSize 16384
     */
-    singletonObj.setSystemParam(SystemInfoList);
+    singletonObj.initSystemParam(SystemInfoList);
   }
 
   public static SystemInfo getSingletonObj() {
@@ -84,19 +91,22 @@ public final class SystemInfo {
     catch(CustomExceptions e) {
 			System.out.println(e);
 		}
-
     return singletonObj;
   }
+  
 
-  public void setHostPeer(Peer host) {
+  /**
+   * Init system peer and communication objects or params
+   */
+  public void initHostPeer(Peer host) {
     this.host = host;
   }
 
-  public void setPeerList(HashMap<String, Peer> neighborMap) {
+  public void initNeighborMap(HashMap<String, Peer> neighborMap) {
     this.neighborMap = neighborMap;
   }
-
-  public void setSystemParam(List<String> SystemInfoList) {
+  
+  public void initSystemParam(List<String> SystemInfoList) {
     try {
       this.preferN = Integer.parseInt(SystemInfoList.get(0));
       this.unChokingInr = Integer.parseInt(SystemInfoList.get(1));
@@ -110,6 +120,24 @@ public final class SystemInfo {
     }
   }
 
+  public void initChokingMap() {
+    for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
+      if(!n.getValue().getHasFile()) {
+        this.chokingMap.put(n.getKey(), n.getValue());
+      }
+    }
+  }
+
+  /**
+   * Receive piece, add to new obtain blocks list
+   * @param blockIdx
+   */
+  public void addNewObtainBlocks(int blockIdx) {
+    this.newObtainBlocks.add(blockIdx);
+  }
+  /**
+  * Get system peer and communication objects or params
+  */
   public Peer getHostPeer() {
     return this.host;
   }
@@ -161,10 +189,6 @@ public final class SystemInfo {
 			this.lock.unlock();
 		}
   }
-
-  public void clearChokingMap() {
-    this.chokingMap.clear();
-  }
   
   public HashMap<String, Socket> getConnectionMap() {
     return this.connectionMap;
@@ -174,20 +198,22 @@ public final class SystemInfo {
     return this.actMsgMap;
   }
 
-  public void printNeighborsInfo() {
-    if(this.neighborMap != null && this.neighborMap.size() != 0) {
-      String infos = String.format("[%s] Print out neighbor map \n", this.host.getId());
-      for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
-        infos += String.format(
-          "(%s) isInterested: (%s) isChoking (%s) isDownloading (%s)\n",
-          n.getKey(),
-          n.getValue().getIsInterested(),
-          n.getValue().getIsChoking(),
-          n.getValue().getIsDownloading()
-        );
-        System.out.println(infos);
-      }
-    }
+  /**
+   * 1. Copy newObtainBlocks with lock.
+   * 2. Clear newObtainBlocks
+   * @return copyList from newObtainBlocks
+   */
+  public List<Integer> getNewObtainBlocksCopy() {
+    this.lock.lock();
+		try{
+      List<Integer> copyList = new ArrayList<Integer>();
+      copyList.addAll(this.newObtainBlocks);
+      this.newObtainBlocks.clear();
+      return copyList;
+		}
+		finally{
+			this.lock.unlock();
+		}
   }
 
   /**
@@ -227,5 +253,24 @@ public final class SystemInfo {
 
   public long getClientRequestPieceInr() {
     return SystemInfo.clientRequestPieceInr;
+  }
+
+  /**
+   * Test Function
+   */
+  public void printNeighborsInfo() {
+    if(this.neighborMap != null && this.neighborMap.size() != 0) {
+      String infos = String.format("[%s] Print out neighbor map \n", this.host.getId());
+      for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
+        infos += String.format(
+          "(%s) isInterested: (%s) isChoking (%s) isDownloading (%s)\n",
+          n.getKey(),
+          n.getValue().getIsInterested(),
+          n.getValue().getIsChoking(),
+          n.getValue().getIsDownloading()
+        );
+        System.out.println(infos);
+      }
+    }
   }
 }

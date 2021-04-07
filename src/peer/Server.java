@@ -36,17 +36,16 @@ public class Server extends Thread{
 
 	public void run() {
 		logging.logStartServer();
-		
+
 		try {
 			ServerSocket listener = new ServerSocket(hostPeer.getPort());
 			try {
-				
 				/**
 				 * Set up the unckoking & opt peer selection mechanism
 				 */
 				logging.writeLog("Establishing Timer for PreferSelect with interval: " + sysInfo.getUnChokingInr()*1000 + "(ms)");
+				sysInfo.initChokingMap();
 				PreferSelect taskPrefSelect = new PreferSelect();
-				// OptSelect optSelect = new OptSelect();
 				this.PreferSelectTimer.schedule(taskPrefSelect, 0, sysInfo.getUnChokingInr()*1000);
 				// this.OptSelectTimer.schedule(optSelect, sysInfo.getOptUnChokingInr());
 
@@ -139,16 +138,46 @@ public class Server extends Thread{
 			 * 		c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap
 			 * 		d.choke -> choke => put key in chokeMap
 			 */
-			selectNodes();
+			try {
+				selectNodes();
+				
+				/**
+				 * Send the new obtain pieces to all who needs
+				 * 1. copy from getNewObtainBlocks.
+				 */
+				List<Integer> obtainBlocks = sysInfo.getNewObtainBlocksCopy();
+				if(obtainBlocks.size() != 0) {
+					for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
+						String key = n.getKey();
+						if(!n.getValue().getIsFinish()) {
+							if(actMsgMap.get(key) != null) { 
+								OutputStream outConn = connectionMap.get(key).getOutputStream();
+								for(Integer blockIdx: obtainBlocks) {
+									actMsgMap.get(key).send(outConn, ActualMsg.HAVE, blockIdx);
+								}
+							}
+							else {
+								throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
+							}
+						}
+					}
+				}
+			}
+			catch(CustomExceptions e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", trace);
+			}
+			catch(IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "Server PreferSelect Timer sending msg failed:" + trace);
+			}
 		}
 
-		private int selectNodes() {
+		private int selectNodes() throws IOException, CustomExceptions {
 			logging.writeLog("selecting interested node");
 			if(interestMap.isEmpty()) return 0;
 			
 			List<Entry<String, Peer>> interestList = new ArrayList<Entry<String, Peer>>(interestMap.entrySet());
-			logging.writeLog("interestList size: " + interestList.size());
-
 			if(interestMap.size() > preferN) {
 				/**
 				 * 3. random select | picked by download rate
@@ -165,76 +194,67 @@ public class Server extends Thread{
 				logging.writeLog(String.format("%s download rate: %s", i.getKey(), i.getValue().getDownloadRate()));
 			}
 
+			// logging.writeLog("show connectionMap:");
+			// for(Entry<String, Socket> n: connectionMap.entrySet()) {
+			// 	logging.writeLog(n.getKey());
+			// }
+
+			// logging.writeLog("show actMsgMap:");
+			// for(Entry<String, ActualMsg> n: actMsgMap.entrySet()) {
+			// 	logging.writeLog(n.getKey());
+			// }
+			
 			/**
 			 * 4. depend on the situation to handle the selected nodes and unselected nodes
 			 */
+			/**
+			 * unchoke the first preferN neighbors in interestList, choke the rest
+			 */
 			int count = 1;
-			try {
-				logging.writeLog("show connectionMap:");
-				for(Entry<String, Socket> n: connectionMap.entrySet()) {
-					logging.writeLog(n.getKey());
-				}
-
-				logging.writeLog("show actMsgMap:");
-				for(Entry<String, ActualMsg> n: actMsgMap.entrySet()) {
-					logging.writeLog(n.getKey());
-				}
-
-				for(Entry<String, Peer> i: interestList) {
-					if(count > preferN) {
-						// Not been picked, choke them
-						if(unChokingMap.get(i.getKey()) != null) {
-							// b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
-							String key = i.getKey();
-							if(actMsgMap.get(key) == null) { 
-								throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
-							}
-							OutputStream outConn = connectionMap.get(key).getOutputStream();
-							actMsgMap.get(key).send(outConn, ActualMsg.CHOKE, 0);
-							unChokingMap.remove(key);
+			for(Entry<String, Peer> i: interestList) {
+				if(count > preferN) {
+					// Not been picked, choke them
+					if(unChokingMap.get(i.getKey()) != null) {
+						// b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
+						String key = i.getKey();
+						if(actMsgMap.get(key) == null) { 
+							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
 						}
-						// b+d  put key in chokeMap
-						chokingMap.put(i.getKey(), i.getValue());
+						OutputStream outConn = connectionMap.get(key).getOutputStream();
+						actMsgMap.get(key).send(outConn, ActualMsg.CHOKE, 0);
+						unChokingMap.remove(key);
 					}
-					else {
-						// Been picked, unchoke them
-						if(chokingMap.get(i.getKey()) != null) {
-							// c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap  
-							String key = i.getKey();
-							
-							if(actMsgMap.get(key) == null) { 
-								throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
-							}
-							OutputStream outConn = connectionMap.get(key).getOutputStream();
-							actMsgMap.get(key).send(outConn, ActualMsg.UNCHOKE, 0);
-							chokingMap.remove(key);
+					// b+d  put key in chokeMap
+					chokingMap.put(i.getKey(), i.getValue());
+				}
+				else {
+					// Been picked, unchoke them, initially every interest neighbors will be choked
+					if(chokingMap.get(i.getKey()) != null) {
+						// c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap  
+						String key = i.getKey();
+						
+						if(actMsgMap.get(key) == null) { 
+							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
 						}
-						// b+d  put key in unchokeMap
-						unChokingMap.put(i.getKey(), i.getValue());
+						OutputStream outConn = connectionMap.get(key).getOutputStream();
+						actMsgMap.get(key).send(outConn, ActualMsg.UNCHOKE, 0);
+						chokingMap.remove(key);
 					}
-					count ++;
+					// b+d  put key in unchokeMap
+					unChokingMap.put(i.getKey(), i.getValue());
 				}
-				
-				logging.writeLog("show chokingMap:");
-				for(Entry<String, Peer> n: chokingMap.entrySet()) {
-					logging.writeLog(n.getKey());
-				}
-
-				logging.writeLog("show unChokingMap:");
-				for(Entry<String, Peer> n: unChokingMap.entrySet()) {
-					logging.writeLog(n.getKey());
-				}
-			}
-			catch(CustomExceptions e) {
-				String trace = Tools.getStackTrace(e);
-				logging.writeLog("severe", trace);
-			}
-			catch(IOException e) {
-				String trace = Tools.getStackTrace(e);
-				logging.writeLog("severe", "Server PreferSelect Timer sending msg failed:" + trace);
+				count ++;
 			}
 			
+			logging.writeLog("show chokingMap:");
+			for(Entry<String, Peer> n: chokingMap.entrySet()) {
+				logging.writeLog(n.getKey());
+			}
 
+			logging.writeLog("show unChokingMap:");
+			for(Entry<String, Peer> n: unChokingMap.entrySet()) {
+				logging.writeLog(n.getKey());
+			}
 			return 0;
 		}
 
@@ -410,7 +430,6 @@ public class Server extends Thread{
 					logging.writeLog("severe", "(Server thread) close connection failed : " + peerId + ", ex:" + trace);
 				}
 			}
-			removePeerFromMap();
 			return;
 		}
 		
