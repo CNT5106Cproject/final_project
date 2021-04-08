@@ -113,7 +113,6 @@ public class FileManager {
 	}
 	
 	public int getOwnBitfieldSize(){
-		printByteArray(this.ownBitfield);
 		return BitSet.valueOf(this.ownBitfield).cardinality();
 	}
 
