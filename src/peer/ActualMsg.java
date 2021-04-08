@@ -11,16 +11,17 @@ import utils.LogHandler;
 public class ActualMsg{
 	Peer interConnPeer; // the other peer communicating with msg
 	// pretend to be enum
-	public static byte CHOKE = 0;
-	public static byte UNCHOKE = 1;
-	public static byte INTERESTED = 2;
-	public static byte NOTINTERESTED = 3;
-	public static byte HAVE = 4;
-	public static byte BITFIELD = 5;
-	public static byte REQUEST = 6;
-	public static byte PIECE = 7;
-	// 4 msg type
-	// choke, unchoke, interested, notinterested have no payload
+	public static byte END = 0;
+	public static byte CHOKE = 1;
+	public static byte UNCHOKE = 2;
+	public static byte INTERESTED = 3;
+	public static byte NOTINTERESTED = 4;
+	public static byte HAVE = 5;
+	public static byte BITFIELD = 6;
+	public static byte REQUEST = 7;
+	public static byte PIECE = 8;
+	// 5 msg type
+	// end, choke, unchoke, interested, notinterested have no payload
 	// only msg type and msg length
 	// noPayloadMsg is actually the header
 	public NoPayloadMsg noPayloadMsg = new NoPayloadMsg();
@@ -51,7 +52,7 @@ public class ActualMsg{
 
 	/**
 	 * send() for 
-	 * (1) CHOKE UNCHOKE INTERESTED NOTINTERESTED
+	 * (1) END CHOKE UNCHOKE INTERESTED NOTINTERESTED
 	 * (2) HAVE REQUEST
 	 * @param      out          The out
 	 * @param      type         The type

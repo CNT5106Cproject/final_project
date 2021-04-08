@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
@@ -31,7 +32,7 @@ public final class SystemInfo {
    * - chokingMap, unChokingMap
    *    The choking-unChoking interval will update these two map,
    *    To picked the sending candidate to send piece.
-   * - connectionMap, asgMsgMap 
+   * - serverConnMap, asgMsgMap 
    *    Use for communicating between Interval thread and main Server thread.
    */
   private Peer host;
@@ -39,11 +40,16 @@ public final class SystemInfo {
   private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
-  private HashMap<String, Socket> connectionMap = new HashMap<String, Socket>();
-	private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
-  
+
+  // Multiple handlers will modify and get this object - use ConcurrentHashMap
+  private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
+	private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+  // Multiple clients will modify and get this object - use ConcurrentHashMap
+  private ConcurrentHashMap<String, Socket> clientConnMap = new ConcurrentHashMap<String, Socket>();
+
   private List<Integer> blockList  = new ArrayList<Integer>();
   private List<Integer> newObtainBlocks = Collections.synchronizedList(blockList);
+
   /**
    * System Parameters from config
    */
@@ -190,12 +196,16 @@ public final class SystemInfo {
 		}
   }
   
-  public HashMap<String, Socket> getConnectionMap() {
-    return this.connectionMap;
+  public ConcurrentHashMap<String, Socket> getServerConnMap() {
+    return this.serverConnMap;
   }
 
-  public HashMap<String, ActualMsg> getActMsgMap() {
+  public ConcurrentHashMap<String, ActualMsg> getActMsgMap() {
     return this.actMsgMap;
+  }
+
+  public ConcurrentHashMap<String, Socket> getClientConnMap() {
+    return this.clientConnMap;
   }
 
   /**

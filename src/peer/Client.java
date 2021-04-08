@@ -2,13 +2,8 @@ package peer;
 
 import java.net.*;
 import java.io.*;
-import java.nio.*;
-import java.nio.channels.*;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
+import java.util.Map.Entry;
 import utils.CustomExceptions;
-import utils.ErrorCode;
 import utils.LogHandler;
 import utils.Tools;
 
@@ -46,6 +41,7 @@ public class Client extends Peer implements Runnable {
 					// create a socket to connect to the server
 					if (this.tryToConnect) {
 						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
+						sysInfo.getClientConnMap().put(targetHostPeer.getId(), requestSocket);
 						logging.logStartConn(clientPeer, targetHostPeer);
 					}
 					/** 
@@ -94,8 +90,9 @@ public class Client extends Peer implements Runnable {
 							if(fm != null && fm.isComplete()) {
 								// The file download has complete
 								logging.logCompleteFile();
-								// send end message
-								return;
+								logging.writeLog("send END msg to all server, isFinish = true, close connection with: " + targetHostPeer.getId());
+								// send end message to all server
+								sendEndMessageToAll();
 							}
 						}
 					}
@@ -123,6 +120,7 @@ public class Client extends Peer implements Runnable {
 					recreate_connection(targetHostPeer);
 				}
 			}
+			logging.writeLog("isFinish = true, close connection with: " + targetHostPeer.getId());
 		}
 		finally{
 			try{
@@ -161,7 +159,7 @@ public class Client extends Peer implements Runnable {
 	 */
 	private boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
 		if(msg_type == ActualMsg.BITFIELD) {
-			logging.logBitFieldMsg(this.targetHostPeer);
+			logging.logReceiveBitFieldMsg(this.targetHostPeer);
 			// update targetHostPeer's bitfield
 			byte[] b = actMsg.bitfieldMsg.getBitfield();
 			fm.insertBitfield(this.targetHostPeer.getId(), b, b.length);
@@ -172,7 +170,6 @@ public class Client extends Peer implements Runnable {
 			else {
 				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
 			}
-			return true;
 		}
 		else if(msg_type == ActualMsg.HAVE) {
 			logging.logReceiveHaveMsg(this.targetHostPeer);
@@ -189,7 +186,6 @@ public class Client extends Peer implements Runnable {
 			else {
 				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
 			}
-			return true;
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
 			logging.logChoking(this.targetHostPeer);
@@ -227,7 +223,7 @@ public class Client extends Peer implements Runnable {
 			}
 			requestingPiece(this.targetHostPeer, outConn);
 		}
-		return false;
+		return true;
 	}
 
 	/**
@@ -245,6 +241,16 @@ public class Client extends Peer implements Runnable {
 		this.actMsg.send(outConn, ActualMsg.REQUEST, requestBlockIdx);
 		return 0;
 	}
+
+	private void sendEndMessageToAll() throws IOException {
+		logging.writeLog("send END msg to # " + sysInfo.getClientConnMap().size() + " servers");
+		for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
+			logging.logSendEndMsg(conn.getKey());
+			OutputStream outConn = conn.getValue().getOutputStream();
+			this.actMsg.send(outConn, ActualMsg.END, 0);
+		}
+	}
+	
 	/**
 	 * 
 	 * @param args
