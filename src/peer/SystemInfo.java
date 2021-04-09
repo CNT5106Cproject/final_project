@@ -1,7 +1,11 @@
 package peer;
 
-import java.util.ArrayList;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
@@ -11,6 +15,7 @@ import utils.ErrorCode;
  */
 public final class SystemInfo {
   
+  private final ReentrantLock lock = new ReentrantLock();
   private static SystemInfo singletonObj = null;
 
   private static int retryLimit = 100;
@@ -19,11 +24,18 @@ public final class SystemInfo {
   /**
    * Host peer infos
    * - host 
-   * - neighborList
+   * - neighborMap
+   * - chokingMap 
+   *    The choking-unChoking interval will assigns new value to this object,
+   *    The opt unChoking interval will use this object to pick opt node.
    */
   private Peer host;
-  private List<Peer> neighborList = new ArrayList<Peer>();
-
+  private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
+  private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
+  private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
+  private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
+  private HashMap<String, Socket> connectionMap = new HashMap<String, Socket>();
+	private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
   /**
    * System Parameters from config
    */
@@ -39,10 +51,10 @@ public final class SystemInfo {
    */
   public SystemInfo() {}
   
-  public SystemInfo(Peer host, List<Peer> neighborList) {
+  public SystemInfo(Peer host, HashMap<String, Peer> neighborMap) {
     singletonObj = new SystemInfo();
     singletonObj.setHostPeer(host);
-    singletonObj.setPeerList(neighborList);
+    singletonObj.setPeerList(neighborMap);
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -79,8 +91,8 @@ public final class SystemInfo {
     this.host = host;
   }
 
-  public void setPeerList(List<Peer> neighborList) {
-    this.neighborList = neighborList;
+  public void setPeerList(HashMap<String, Peer> neighborMap) {
+    this.neighborMap = neighborMap;
   }
 
   public void setSystemParam(List<String> SystemInfoList) {
@@ -97,15 +109,84 @@ public final class SystemInfo {
     }
   }
 
-  /**
-  * Get peer infos
-  */
   public Peer getHostPeer() {
     return this.host;
   }
+  
+  public HashMap<String, Peer> getNeighborMap() {
+    this.lock.lock();
+		try{
+      return this.neighborMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
 
-  public List<Peer> getPeerList() {
-    return this.neighborList;
+  public HashMap<String, Peer> getInterestMap() {
+    this.lock.lock();
+		try{
+      return this.interestMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public void clearInterestMap() {
+    this.interestMap.clear();
+  }
+
+  public HashMap<String, Peer> getUnChokingMap() {
+    this.lock.lock();
+		try{
+      return this.unChokingMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public void clearUnChokingMap() {
+    this.unChokingMap.clear();
+  }
+
+  public HashMap<String, Peer> getChokingMap() {
+    this.lock.lock();
+		try{
+      return this.chokingMap;
+		}
+		finally{
+			this.lock.unlock();
+		}
+  }
+
+  public void clearChokingMap() {
+    this.chokingMap.clear();
+  }
+  
+  public HashMap<String, Socket> getConnectionMap() {
+    return this.connectionMap;
+  }
+
+  public HashMap<String, ActualMsg> getActMsgMap() {
+    return this.actMsgMap;
+  }
+
+  public void printNeighborsInfo() {
+    if(this.neighborMap != null && this.neighborMap.size() != 0) {
+      String infos = String.format("[%s] Print out neighbor map \n", this.host.getId());
+      for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
+        infos += String.format(
+          "(%s) isInterested: (%s) isChoking (%s) isDownloading (%s)\n",
+          n.getKey(),
+          n.getValue().getIsInterested(),
+          n.getValue().getIsChoking(),
+          n.getValue().getIsDownloading()
+        );
+        System.out.println(infos);
+      }
+    }
   }
 
   /**

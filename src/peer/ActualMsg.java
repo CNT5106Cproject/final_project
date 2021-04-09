@@ -1,12 +1,15 @@
 package peer;
 
 import java.io.*;
+
+import utils.LogHandler;
 // ActualMsg always have 4 objects for 4 types of message
 // It will not be the object it created at the begining after recv()
 // but it doesn't matter.
 // 
 // This class is not thread-safe
 public class ActualMsg{
+	Peer interConnPeer; // the other peer communicating with msg
 	// pretend to be enum
 	public static byte CHOKE = 0;
 	public static byte UNCHOKE = 1;
@@ -20,13 +23,32 @@ public class ActualMsg{
 	// choke, unchoke, interested, notinterested have no payload
 	// only msg type and msg length
 	// noPayloadMsg is actually the header
-	private NoPayloadMsg noPayloadMsg = new NoPayloadMsg();
+	public NoPayloadMsg noPayloadMsg = new NoPayloadMsg();
 	// have, request have 4 bytes payload
-	private ShortPayloadMsg shortMsg = new ShortPayloadMsg();
+	public ShortPayloadMsg shortMsg = new ShortPayloadMsg();
 	// bitfield have a variable length bitfield
-	private BitfieldMsg bitfieldMsg = new BitfieldMsg();
+	public BitfieldMsg bitfieldMsg = new BitfieldMsg();
 	// piece have a 4 bytes blockIdx and variable length of data
-	private PieceMsg pieceMsg = new PieceMsg();
+	public PieceMsg pieceMsg = new PieceMsg();
+
+	private static LogHandler logging = new LogHandler();
+	
+	/**
+	 * Actual msg object create for sending message to multiple peers
+	 */
+	ActualMsg() {
+	}
+
+	/**
+	 * Actual msg object create for specific inter-connected peer
+	 * @param interConnPeer
+	 */
+	ActualMsg(Peer interConnPeer) {
+		this.interConnPeer = interConnPeer;
+	}
+
+
+
 	/**
 	 * send() for 
 	 * (1) CHOKE UNCHOKE INTERESTED NOTINTERESTED
@@ -121,10 +143,15 @@ public class ActualMsg{
 				PieceMsg pieceMsg = (PieceMsg) msg;
 				this.pieceMsg = pieceMsg;
 			}
+			logging.writeLog(
+				String.format("Receive msg from peer [%s], type: [%s]", 
+				this.interConnPeer.getId(),
+				type
+			));
 			return type;
 		}
 		catch(ClassNotFoundException e){
-			System.out.println("class not found");
+			logging.writeLog("severe", "read input stream exception, ex:" + e);
 		}
 		return -1;
 	}
@@ -139,33 +166,33 @@ public class ActualMsg{
 		}
 	}
 	public static void main(String args[]) throws IOException{
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		ActualMsg sender = new ActualMsg();
-		ActualMsg recver = new ActualMsg();
-		byte[] b = {
-			(byte)0b10101010,
-			(byte)0b01010101
-		};
-		sender.send(out,ActualMsg.REQUEST, 2);
-		// sender.send(out,ActualMsg.PIECE, 2, b);
-		int type = recver.recv(new ByteArrayInputStream(out.toByteArray()));
+		// ByteArrayOutputStream out = new ByteArrayOutputStream();
+		// ActualMsg sender = new ActualMsg();
+		// ActualMsg recver = new ActualMsg();
+		// byte[] b = {
+		// 	(byte)0b10101010,
+		// 	(byte)0b01010101
+		// };
+		// sender.send(out,ActualMsg.REQUEST, 2);
+		// // sender.send(out,ActualMsg.PIECE, 2, b);
+		// int type = recver.recv(new ByteArrayInputStream(out.toByteArray()));
 
-		if(type <= ActualMsg.NOTINTERESTED){
-				System.out.println(recver.noPayloadMsg.getMsgType());
-			}
-			else if(type < ActualMsg.PIECE && type != ActualMsg.BITFIELD){
-				System.out.println(recver.shortMsg.getMsgType());
-				System.out.println(recver.shortMsg.getBlockIdx());
-			}
-			else if(type == ActualMsg.BITFIELD){
-				System.out.println(recver.bitfieldMsg.getMsgType());
-				ActualMsg.printByteArray(recver.bitfieldMsg.getBitfield());
-			}
-			else{
-				System.out.println(recver.pieceMsg.getMsgType());
-				System.out.println(recver.pieceMsg.getMsgLen());
-				ActualMsg.printByteArray(recver.pieceMsg.getData());
-			}
+		// if(type <= ActualMsg.NOTINTERESTED){
+		// 		System.out.println(recver.noPayloadMsg.getMsgType());
+		// 	}
+		// 	else if(type < ActualMsg.PIECE && type != ActualMsg.BITFIELD){
+		// 		System.out.println(recver.shortMsg.getMsgType());
+		// 		System.out.println(recver.shortMsg.getBlockIdx());
+		// 	}
+		// 	else if(type == ActualMsg.BITFIELD){
+		// 		System.out.println(recver.bitfieldMsg.getMsgType());
+		// 		ActualMsg.printByteArray(recver.bitfieldMsg.getBitfield());
+		// 	}
+		// 	else{
+		// 		System.out.println(recver.pieceMsg.getMsgType());
+		// 		System.out.println(recver.pieceMsg.getMsgLen());
+		// 		ActualMsg.printByteArray(recver.pieceMsg.getData());
+		// 	}
 
 	}
 }

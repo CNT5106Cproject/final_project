@@ -1,2 +1,2 @@
 #!/bin/bash
-kill -9 $(netstat -vanp tcp | grep 556 | awk '{print $9}')
+kill -9 $(ps aux | grep java | grep peer.PeerProces | awk '{print $2}')

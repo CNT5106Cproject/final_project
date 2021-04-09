@@ -6,6 +6,9 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+
+import javax.sound.midi.Receiver;
+
 import java.util.Date;
 import java.util.logging.FileHandler;
 import java.util.logging.Filter;
@@ -147,12 +150,21 @@ public final class LogHandler {
     );
     logger.fine(msg);
   }
+
+  public void logHandShakeSuccess(Peer sender, Peer recv) {
+    String msg = String.format(
+      "Peer [%s] set up handshake with [%s] SUCCESS", 
+      sender.getId(), 
+      recv.getId()
+    );
+    logger.fine(msg);
+  }
   
   /**
   * Peer action errors
   */
   public void logConnError(Peer client, Peer targetHost) {
-    String msg = String.format("Peer [%s] occurs connection error with Peer [%s], Start retry in [%s] sec", 
+    String msg = String.format("Peer [%s] (client) occurs connection ERROR with Peer [%s], Start retry in [%s] sec", 
       client.getId(), 
       targetHost.getId(),
       sysInfo.getRetryInterval()
@@ -167,7 +179,7 @@ public final class LogHandler {
   */
   // 1. TCP connection
   public void logStartConn(Peer client, Peer targetHost) {
-    String msg = String.format("Peer [%s] makes a connection to Peer [%s]", client.getId(), targetHost.getId());
+    String msg = String.format("Peer [%s] (client) makes a connection to Peer [%s]", client.getId(), targetHost.getId());
     logger.info(msg);
   }
   
@@ -180,45 +192,88 @@ public final class LogHandler {
   public void logChangeUnchokedPeer() {
 
   }
-  // 4. unchoking
-  public void logUnchoking() {
-
-  }
-  // 5. choking
-  public void logChoking() {
-
-  }
-  // 6. receiving ‘have’ message
-  public void logSendHaveMsg() {
-
-  }
-  // 7. receiving ‘interested’ message
-  public void logSendInterestMsg() {
-
-  }
-  // 8. receiving ‘not interested’ message
-  public void logSendNotInterestMsg() {
-
-  }
-  // 9. downloading a piece
-  public void logDownload() {
-
-  }
-  // 10. completion of download
-  public void logCompleteFile() {
-
-  }
   
-  public void logCloseConn(String targetPeerID) {
-    String msg = String.format("Peer [%s] close connection with Peer [%s]", 
+  // 4. unchoking
+  public void logUnchoking(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘unchoke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  // 5. choking
+  public void logChoking(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘choke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  // 6. receiving ‘have’ message
+  public void logReceiveHaveMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘have’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  // 7. receiving ‘interested’ message
+  public void logReceiveInterestMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  // 8. receiving ‘not interested’ message
+  public void logReceiveNotInterestMsg(Peer sender) {
+    String msg = String.format("Peer [%s] received the ‘not interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  // 9. downloading a piece
+  public void logDownload(Peer sender, int blockIdx, int numBlocks) {
+    String msg = String.format(
+      "Peer [%s] has downloaded the piece [%s] from [%s]. Now the number of pieces it has is [%s]", 
       sysInfo.getHostPeer().getId(), 
-      targetPeerID
+      blockIdx,
+      sender.getId(),
+      numBlocks
     );
     logger.info(msg);
   }
 
-  public void logSendHandShakeMsg(String targetPeerID) {
-    logger.info(String.format("Sending handshake message to peer [%s]", targetPeerID));
+  // 10. completion of download
+  public void logCompleteFile() {
+    String msg = String.format("Peer [%s] has downloaded the complete file.  ", sysInfo.getHostPeer().getId());
+    logger.info(msg);
   }
   
+  public void logCloseConn(Peer targetPeer) {
+    String msg = String.format("Peer [%s] close connection with Peer [%s]", 
+      sysInfo.getHostPeer().getId(), 
+      targetPeer.getId()
+    );
+    logger.info(msg);
+  }
+
+  public void logSendHandShakeMsg(String targetPeerID, String threadType) {
+    logger.info(String.format("Peer [%s] (%s) sending handshake message to peer [%s]", sysInfo.getHostPeer().getId(), threadType, targetPeerID));
+  }
+
+  public void logReceiveHandShakeMsg(String senderId) {
+    String msg = String.format("Peer [%s] received the ‘handshake’ message from [%s]", sysInfo.getHostPeer().getId(), senderId);
+    logger.info(msg);
+  }
+
+  public void logSendBitFieldMsg(Peer recv) {
+    logger.info(String.format("Peer [%s] (server) sending bitfield message to peer [%s]", sysInfo.getHostPeer().getId(), recv.getId()));
+  }
+
+  public void logBitFieldMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (client) received the ‘bitfield’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logReceiveRequestMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (server) received the ‘request’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logReceivePieceMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (client) received the ‘piece’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
 }
