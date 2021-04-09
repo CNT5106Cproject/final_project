@@ -210,7 +210,6 @@ public class Server extends Thread{
 					if(unChokingMap.get(i.getKey()) != null) {
 						// b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
 						String key = i.getKey();
-						logging.writeLog("try to send choke to client " + key);
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
 						}
@@ -229,7 +228,6 @@ public class Server extends Thread{
 					if(chokingMap.get(i.getKey()) != null) {
 						// c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap  
 						String key = i.getKey();
-						logging.writeLog("try to send unchoke to client " + key);
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
 						}
@@ -246,15 +244,17 @@ public class Server extends Thread{
 				count ++;
 			}
 			
-			logging.writeLog("show chokingMap:");
-			for(Entry<String, Peer> n: chokingMap.entrySet()) {
-				logging.writeLog(n.getKey());
-			}
+			// logging.writeLog("show chokingMap:");
+			// for(Entry<String, Peer> n: chokingMap.entrySet()) {
+			// 	logging.writeLog(n.getKey());
+			// }
 
-			logging.writeLog("show unChokingMap:");
-			for(Entry<String, Peer> n: unChokingMap.entrySet()) {
-				logging.writeLog(n.getKey());
-			}
+			// logging.writeLog("show unChokingMap:");
+			// for(Entry<String, Peer> n: unChokingMap.entrySet()) {
+			// 	logging.writeLog(n.getKey());
+			// }
+
+			logging.logChangePrefersPeers();
 			return 0;
 		}
 
@@ -321,6 +321,7 @@ public class Server extends Thread{
 		 * Assign Random download rate to nodes
 		 */
 		private void testRandomDownLoadRate() {	
+			// TODO set a real downloading rate
 			for(Entry<String, Peer> n: interestMap.entrySet()) {
 				n.getValue().setDownloadRate(R.nextDouble());
 			}

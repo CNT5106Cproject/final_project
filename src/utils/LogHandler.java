@@ -6,10 +6,12 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.stream.Collectors;
 
 import javax.sound.midi.Receiver;
 
 import java.util.Date;
+import java.util.Map.Entry;
 import java.util.logging.FileHandler;
 import java.util.logging.Filter;
 import java.text.SimpleDateFormat;
@@ -186,22 +188,27 @@ public final class LogHandler {
   // 2. change of preferred neighbors
   public void logChangePrefersPeers() {
     // TODO
+    String preferredString = sysInfo.getUnChokingMap().entrySet().stream().map(p->p.getKey()).collect(Collectors.joining(","));
+    String msg = String.format("Peer [%s] has the preferred neighbors [%s]", sysInfo.getHostPeer().getId(), preferredString);
+    logger.info(msg);
   }
 
   // 3. change of optimistically unchoked neighbor
-  public void logChangeUnchokedPeer() {
+  public void logChangeUnchokedPeer(Peer sender) {
     // TODO
+    String msg = String.format("Peer [%s] as  the  optimistically  unchoked  neighbor [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
   }
   
   // 4. unchoking
   public void logUnchoking(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘unchoke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] is unchoked by [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
   // 5. choking
   public void logChoking(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘choke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] is choked by [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
