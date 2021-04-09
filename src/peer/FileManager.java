@@ -262,13 +262,21 @@ public class FileManager {
 	 * @return     -1 when not interested, otherwise return interested block index.
 	 */
 	public synchronized int pickInterestedFileBlock(String peerId){
-		if(this.interested.size() == 0) return -1;
+		Random rd = new Random();
+		int blockIdx = -1;
+		if(this.interested.size() == 0) {
+			ArrayList<Integer> downloading = new ArrayList<Integer>(this.downloading);
+			if(downloading.size() == 0) {
+				return blockIdx;
+			}
+			blockIdx = downloading.get(rd.nextInt(downloading.size()));
+			return blockIdx;
+		}
 		ArrayList<Integer> interested = new ArrayList<Integer>(this.interested);
 		// get intersection of interested and have
 		interested.retainAll(this.otherPeerHave.get(peerId));
 		if(interested.size() == 0) return -1;
-		Random rd = new Random();
-		int blockIdx = interested.get(rd.nextInt(interested.size()));
+		blockIdx = interested.get(rd.nextInt(interested.size()));
 		this.downloading.add(blockIdx);
 		this.interested.remove(blockIdx);
 		return blockIdx;
