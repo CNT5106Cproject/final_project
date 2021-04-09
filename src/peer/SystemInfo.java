@@ -1,11 +1,12 @@
 package peer;
 
-import java.io.OutputStream;
-import java.net.Socket;
+import java.net.*;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Timer;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -36,6 +37,10 @@ public final class SystemInfo {
    */
   private Peer host;
   boolean isSystemComplete;
+  ServerSocket serverListener;
+  private Timer PreferSelectTimer;
+  private Timer OptSelectTimer;
+
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
@@ -50,6 +55,7 @@ public final class SystemInfo {
   private List<Integer> blockList  = new ArrayList<Integer>();
   private List<Integer> newObtainBlocks = Collections.synchronizedList(blockList);
 
+  
   /**
    * System Parameters from config
    */
@@ -70,6 +76,8 @@ public final class SystemInfo {
     singletonObj.initHostPeer(host);
     singletonObj.initNeighborMap(neighborMap);
     singletonObj.isSystemComplete = false;
+    singletonObj.PreferSelectTimer = new Timer();
+    singletonObj.OptSelectTimer = new Timer();
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -107,6 +115,10 @@ public final class SystemInfo {
    */
   public void initHostPeer(Peer host) {
     this.host = host;
+  }
+
+  public void initServerListener() throws IOException {
+    this.serverListener = new ServerSocket(host.getPort());
   }
 
   public void initNeighborMap(HashMap<String, Peer> neighborMap) {
@@ -152,9 +164,17 @@ public final class SystemInfo {
   public Peer getHostPeer() {
     return this.host;
   }
-  
+
+  public ServerSocket getServerListener() {
+    return this.serverListener;
+  }
+
   public boolean getIsSystemComplete() {
     return this.isSystemComplete;
+  }
+
+  public Timer getPreferSelectTimer() {
+    return this.PreferSelectTimer;
   }
 
   public HashMap<String, Peer> getNeighborMap() {

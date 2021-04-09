@@ -2,16 +2,12 @@ package peer;
 
 import java.net.*;
 import java.io.*;
-import java.nio.*;
-import java.nio.channels.*;
-import java.security.Key;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,8 +24,6 @@ public class Server extends Thread{
 	private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
 	private static FileManager fm = FileManager.getInstance();
 	private static LogHandler logging = new LogHandler();
-	private Timer PreferSelectTimer = new Timer();
-	private Timer OptSelectTimer = new Timer();
 
 	public Server() {
 		this.hostPeer = sysInfo.getHostPeer();
@@ -37,9 +31,9 @@ public class Server extends Thread{
 
 	public void run() {
 		logging.logStartServer();
-
 		try {
-			ServerSocket listener = new ServerSocket(hostPeer.getPort());
+			sysInfo.initServerListener();
+			ServerSocket listener = sysInfo.getServerListener();
 			try {
 				/**
 				 * Set up the unckoking & opt peer selection mechanism
@@ -47,7 +41,7 @@ public class Server extends Thread{
 				logging.writeLog("Establishing Timer for PreferSelect with interval: " + sysInfo.getUnChokingInr()*1000 + "(ms)");
 				sysInfo.initChokingMap();
 				PreferSelect taskPrefSelect = new PreferSelect();
-				this.PreferSelectTimer.schedule(taskPrefSelect, 0, sysInfo.getUnChokingInr()*1000);
+				sysInfo.getPreferSelectTimer().schedule(taskPrefSelect, 0, sysInfo.getUnChokingInr()*1000);
 				// this.OptSelectTimer.schedule(optSelect, sysInfo.getOptUnChokingInr());
 
 				int clientNum = 0;
@@ -64,19 +58,20 @@ public class Server extends Thread{
 						clientNum
 					));
 					clientNum++;
-
-					if(this.hostPeer.getIsComplete()) {
-						logging.writeLog("All nodes are ‘end’, close Server thread");
-						return;
-					}
 				}
 			} 
 			finally {
 				listener.close();
 			}
 		}
-		catch(IOException ex) {
-
+		catch(IOException e) {
+			if(sysInfo.getIsSystemComplete()) {
+				logging.logSystemIsComplete();
+			}
+			else {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "(server thread) ServerSocket IOException: " + trace);
+			}
 		}
 	}
 
@@ -113,10 +108,17 @@ public class Server extends Thread{
 
 		public void run() {
 			try {
-				if(sysInfo.getIsSystemComplete()) {
-					logging.writeLog("All nodes are ‘end’, close PreferSelect timer");
+				if(isAllNeighborFinish()) {
+					sysInfo.setIsSystemComplete();
+					logging.writeLog("All nodes are ‘end’, close server listener");
+					// sysInfo.getServerThread().stop();
+					sysInfo.getServerListener().close();
+					Tools.timeSleep(500);
+					logging.writeLog("All nodes are ‘end’, cancel PreferSelectTimer");
+					sysInfo.getPreferSelectTimer().cancel();
 					return;
 				}
+
 				selectNodes();
 				sendNewObtainList();
 			}
@@ -128,6 +130,17 @@ public class Server extends Thread{
 				String trace = Tools.getStackTrace(e);
 				logging.writeLog("severe", "Server PreferSelect Timer sending msg failed:" + trace);
 			}
+		}
+
+		private boolean isAllNeighborFinish() {
+			logging.writeLog("check if all neighbor isComplete or not");
+			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
+				Peer check = n.getValue();
+				if(check.getHasFile()) continue;
+				if(!check.getIsComplete()) return false;
+			}
+			logging.writeLog("all neighbor isComplete !!");
+			return true;
 		}
 
 		/**
@@ -452,11 +465,6 @@ public class Server extends Thread{
 					logging.writeLog("severe", "(Server handler thread) close connection failed : " + peerId + ", ex:" + trace);
 				}
 			}
-
-			// check if all neighbor is finish or hasfile
-			if(isAllNeighborFinish()) {
-				sysInfo.setIsSystemComplete();
-			}
 			return;
 		}
 
@@ -496,8 +504,8 @@ public class Server extends Thread{
 					data
 				);
 			}
-			else if(msg_type == ActualMsg.END) {
-				logging.logReceiveEndMsg(this.client);
+			else if(msg_type == ActualMsg.COMPLETE) {
+				logging.logReceiveCompleteMsg(this.client);
 				/**
 				 * 1. remove client from all map
 				 * 2. remove object from connection & actMsg map 
@@ -540,16 +548,6 @@ public class Server extends Thread{
 			if(sysInfo.getUnChokingMap().get(this.client.getId()) != null) {
 				sysInfo.getUnChokingMap().remove(this.client.getId());
 			}
-		}
-
-		private boolean isAllNeighborFinish() {
-			logging.writeLog("check if all neighbor isComplete or not");
-			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
-				Peer check = n.getValue();
-				if(check.getHasFile()) continue;
-				if(!check.getIsComplete()) return false;
-			}
-			return true;
 		}
   }
 }
