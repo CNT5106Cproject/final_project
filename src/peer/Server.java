@@ -490,11 +490,15 @@ public class Server extends Thread{
 			}
 			else if(msg_type == ActualMsg.REQUEST) {
 				/**
-				 * Send back the request piece
+				 * Send back the request piece, if peer is unchoke
 				 * 1. read block
 				 * 2. send 
 				 */
 				logging.logReceiveRequestMsg(this.client);
+				if(sysInfo.getChokingMap().get(this.client.getId()) != null) {
+					logging.writeLog(this.client.getId() + " is choked, unable to response to peace");
+					return false;
+				}
 				OutputStream outConn = this.connection.getOutputStream();
 				
 				int blockIdx = this.actMsg.shortMsg.getBlockIdx();
