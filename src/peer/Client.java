@@ -203,7 +203,6 @@ public class Client extends Peer implements Runnable {
 		else if(msg_type == ActualMsg.CHOKE) {
 			logging.logChoking(this.targetHostPeer);
 			if(!clientPeer.getIsChoking()) {
-				logging.writeLog("execute setChoking");
 				clientPeer.setChoking();
 			}
 		}
@@ -217,7 +216,6 @@ public class Client extends Peer implements Runnable {
 			 */
 			if(this.clientPeer.getIsComplete()) return false;
 			if(clientPeer.getIsChoking()) {
-				logging.writeLog("execute setUnChoking");
 				clientPeer.setUnChoking();
 			}
 			requestingPiece(this.targetHostPeer, outConn);
@@ -264,7 +262,10 @@ public class Client extends Peer implements Runnable {
 	 */
 	private int requestingPiece(Peer sender, OutputStream outConn) throws IOException {
 		int requestBlockIdx = fm.pickInterestedFileBlock(sender.getId());
-		logging.writeLog("requestBlockIdx: :" + requestBlockIdx);
+		if(requestBlockIdx == -1) {
+			logging.writeLog("requestingPiece stop, no interested block"); 
+			return -1;
+		} 
 		this.actMsg.send(outConn, ActualMsg.REQUEST, requestBlockIdx);
 		return 0;
 	}
