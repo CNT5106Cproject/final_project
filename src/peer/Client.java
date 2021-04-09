@@ -162,10 +162,12 @@ public class Client extends Peer implements Runnable {
 	 * Reaction of client receiving the msg, base on the msg type 
 	 * @param msg_type
 	 * @param outConn
-	 * @return
+	 * @return true -> isEnd
 	 * @throws IOException
 	 */
 	private boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
+		if(this.clientPeer.getIsComplete()) return true;
+
 		if(msg_type == ActualMsg.BITFIELD) {
 			logging.logReceiveBitFieldMsg(this.targetHostPeer);
 			// update targetHostPeer's bitfield
@@ -239,15 +241,15 @@ public class Client extends Peer implements Runnable {
 				logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
 				// send complete message to all server
 				sendCompleteMessageToAll();
+				Tools.timeSleep(500);
 				return true;
 			}
 
-			// TODO add piece to new obtain list 
 			if(clientPeer.getIsChoking()) {
 				logging.writeLog("unable continue requesting, peer has been choked");
 				return false;
 			}
-			Tools.timeSleep(500);
+			Tools.timeSleep(200);
 			requestingPiece(this.targetHostPeer, outConn);
 		}
 		return true;
