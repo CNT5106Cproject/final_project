@@ -2,13 +2,8 @@ package peer;
 
 import java.net.*;
 import java.io.*;
-import java.nio.*;
-import java.nio.channels.*;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
+import java.util.Map.Entry;
 import utils.CustomExceptions;
-import utils.ErrorCode;
 import utils.LogHandler;
 import utils.Tools;
 
@@ -24,8 +19,6 @@ public class Client extends Peer implements Runnable {
 	private static FileManager fm = FileManager.getInstance();
 	private HandShake handShake;
 	private ActualMsg actMsg;
-
-	private boolean isChoked = false;
 
 	/**
 	 * Create connection to target host: targetPort.
@@ -43,11 +36,12 @@ public class Client extends Peer implements Runnable {
 
 	public void run() {
 		try {
-			while(fm != null && !fm.isComplete()) {
+			while(!this.clientPeer.getIsComplete()) {
 				try {
 					// create a socket to connect to the server
 					if (this.tryToConnect) {
 						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
+						sysInfo.getClientConnMap().put(targetHostPeer.getId(), requestSocket);
 						logging.logStartConn(clientPeer, targetHostPeer);
 					}
 					/** 
@@ -93,41 +87,60 @@ public class Client extends Peer implements Runnable {
 						msg_type = actMsg.recv(inConn);
 						if(msg_type != -1) {
 							reactions(msg_type, outConn);
-							if(fm != null && fm.isComplete()) {
-								return;
-							}
 						}
 					}
 				}
 				catch (ConnectException e) {
-					logging.logConnError(clientPeer, targetHostPeer);
-					// recreate socket after time delay
-					recreate_connection();
+					if(this.clientPeer.getIsComplete()) {
+						logging.writeLog(
+							"(Client thread) connection close by server " + targetHostPeer.getId() + ", client peer is completed"
+						);
+						return;
+					}
+					else {
+						String trace = Tools.getStackTrace(e);
+						logging.logConnError(clientPeer, targetHostPeer);
+						logging.writeLog("warning", 
+							"(Client thread) ConnectException with client: " + targetHostPeer.getId() + ", ex:" + trace
+						);
+						recreate_connection(targetHostPeer);
+					}
 				}
 				catch(CustomExceptions e){
 					String trace = Tools.getStackTrace(e);
-					logging.writeLog("severe", trace);
-
-					recreate_connection();
+					logging.writeLog("warning", 
+						"(Client thread) CustomExceptions with client: " + targetHostPeer.getId() + ", ex:" + trace
+					);
+					recreate_connection(targetHostPeer);
 				}
 				catch(IOException e){
-					String trace = Tools.getStackTrace(e);
-					logging.writeLog("severe", "client thread IO exception, ex:" + trace);
-
-					recreate_connection();
+					if(this.clientPeer.getIsComplete()) {
+						logging.writeLog(
+							"(Client thread) connection close by server " + targetHostPeer.getId() + ", client peer is completed"
+						);
+						return;
+					}
+					else {
+						String trace = Tools.getStackTrace(e);
+						logging.writeLog("warning", 
+							"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
+						);
+						recreate_connection(targetHostPeer);
+					}
 				}
 			}
-
-			// The file download has complete
-			logging.logCompleteFile();
-		}			
+		}
 		finally{
 			try{
 				if(requestSocket != null) {
-					logging.writeLog("close client connection");
+					logging.writeLog(
+						"(Client thread) close client connection with client: " + targetHostPeer.getId()
+					);
 					requestSocket.close();
 				}
-				logging.writeLog("close client thread");
+				logging.writeLog(
+					"(Client thread) close client thread with: " + targetHostPeer.getId()
+				);
 			}
 			catch(IOException e){
 				logging.writeLog("severe", "Client close connection failed, ex:" + e);
@@ -138,7 +151,8 @@ public class Client extends Peer implements Runnable {
 	/**
 	 * Client thread - recreate socket connection with target host peer
 	 */
-	private void recreate_connection() {
+	private void recreate_connection(Peer targetHostPeer) {
+		logging.writeLog("warning", "RECONNECTING Peer [" + targetHostPeer.getId() + "]" );
 		Tools.timeSleep(sysInfo.getRetryInterval());
 		tryToConnect = true;
 		this.handShake = null;
@@ -148,29 +162,51 @@ public class Client extends Peer implements Runnable {
 	 * Reaction of client receiving the msg, base on the msg type 
 	 * @param msg_type
 	 * @param outConn
-	 * @return
+	 * @return true -> isEnd
 	 * @throws IOException
 	 */
 	private boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
+		if(this.clientPeer.getIsComplete()) return true;
+
 		if(msg_type == ActualMsg.BITFIELD) {
-			logging.logBitFieldMsg(this.targetHostPeer);
+			logging.logReceiveBitFieldMsg(this.targetHostPeer);
 			// update targetHostPeer's bitfield
 			byte[] b = actMsg.bitfieldMsg.getBitfield();
 			fm.insertBitfield(this.targetHostPeer.getId(), b, b.length);
 			// send interest or not
+			if(fm.isOthersFinish(this.targetHostPeer.getId())) {
+				logging.writeLog("(client) notify that peer " + this.targetHostPeer.getId() + " isComplete");
+				this.targetHostPeer.setIsComplete();
+				sysInfo.getNeighborMap().put(this.targetHostPeer.getId(), this.targetHostPeer);
+			}
 			if(fm.isInterested(this.targetHostPeer.getId())) {
 				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
 			}
 			else {
 				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
 			}
-			return true;
 		}
 		else if(msg_type == ActualMsg.HAVE) {
 			logging.logReceiveHaveMsg(this.targetHostPeer);
+
+			int blockIdx = this.actMsg.shortMsg.getBlockIdx();
+			logging.writeLog(String.format("%s send have to notify obtaining new block: %s", 
+				this.targetHostPeer.getId(),
+				blockIdx
+			));
+			fm.updateHave(this.targetHostPeer.getId(), blockIdx);
+			if(fm.isInterested(this.targetHostPeer.getId())) {
+				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
+			}
+			else {
+				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
+			}
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
 			logging.logChoking(this.targetHostPeer);
+			if(!clientPeer.getIsChoking()) {
+				clientPeer.setChoking();
+			}
 		}
 		else if(msg_type == ActualMsg.UNCHOKE) {
 			logging.logUnchoking(this.targetHostPeer);
@@ -180,35 +216,74 @@ public class Client extends Peer implements Runnable {
 			 * 2. unchoke -> unchoke
 			 * 		=> continue sending pieces message 
 			 */
+			if(this.clientPeer.getIsComplete()) return false;
+			if(clientPeer.getIsChoking()) {
+				clientPeer.setUnChoking();
+			}
 			requestingPiece(this.targetHostPeer, outConn);
-			// if(isChoked) {
-			// 	isChoked = false;
-			// 	requestingPiece(this.targetHostPeer);
-			// }
 		}
 		else if(msg_type == ActualMsg.PIECE) {
 			logging.logReceivePieceMsg(this.targetHostPeer);
 			int blockIdx = this.actMsg.pieceMsg.blockIdx;
-			logging.writeLog("receive piece: " + blockIdx + " from " + this.targetHostPeer.getId());
 			int blockLen = fm.getBlockSize(blockIdx);
-			fm.write(blockIdx, this.actMsg.pieceMsg.getData(), blockLen);
+			int isError = fm.write(blockIdx, this.actMsg.pieceMsg.getData(), blockLen);
+			if(isError == -1) {
+				logging.writeLog("unable write block " + blockIdx + " from " + this.targetHostPeer.getId());
+				return false;
+			}
+			logging.logDownload(this.targetHostPeer, blockIdx, fm.getOwnBitfieldSize());
+			sysInfo.addNewObtainBlocks(blockIdx);
+			
+			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
+				// The file download has complete
+				logging.logCompleteFile();
+				this.clientPeer.setIsComplete();
+				logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
+				// send complete message to all server
+				sendCompleteMessageToAll();
+				Tools.timeSleep(500);
+				return true;
+			}
+
+			if(clientPeer.getIsChoking()) {
+				logging.writeLog("unable continue requesting, peer has been choked");
+				return false;
+			}
+			Tools.timeSleep(200);
+			requestingPiece(this.targetHostPeer, outConn);
 		}
-		return false;
+		return true;
 	}
 
 	/**
 	 * 1. request piece
-	 * 2. check piece received
-	 * 3. 
 	 * @param sender
 	 * @param outConn
 	 * @return
 	 * @throws IOException
 	 */
 	private int requestingPiece(Peer sender, OutputStream outConn) throws IOException {
-		this.actMsg.send(outConn, ActualMsg.REQUEST, fm.pickInterestedFileBlock(sender.getId()));
-		// check piece is received 
+		int requestBlockIdx = fm.pickInterestedFileBlock(sender.getId());
+		if(requestBlockIdx == -1) {
+			logging.writeLog("requestingPiece stop, no interested block"); 
+			return -1;
+		} 
+		this.actMsg.send(outConn, ActualMsg.REQUEST, requestBlockIdx);
 		return 0;
+	}
+
+	private void sendCompleteMessageToAll() throws IOException {
+		logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientConnMap().size() + " servers");
+		for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
+			logging.logSendCompleteMsg(conn.getKey());
+			OutputStream outConn = conn.getValue().getOutputStream();
+			this.actMsg.send(outConn, ActualMsg.COMPLETE, 0);
+		}
+	}
+	
+	boolean isClientComplete(){
+		if(fm != null && fm.isComplete()) return true;
+		return false;
 	}
 	/**
 	 * 

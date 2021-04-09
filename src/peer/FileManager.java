@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.ArrayList;
+import java.util.BitSet;
 public class FileManager {
 	public final String fileName;
 	public final int fileLength;
@@ -106,9 +107,19 @@ public class FileManager {
 		this.ownBitfield[blockIdx/8] |= FileManager.bitFlag[blockIdx%8];
 		// printByteArray(this.ownBitfield);
 	}
+
+	public boolean isOwnBitfieldContain(int blockIdx){
+		return ((byte)(this.ownBitfield[blockIdx/8] & FileManager.bitFlag[blockIdx%8]) != 0);
+	}
+	
+	public int getOwnBitfieldSize(){
+		return BitSet.valueOf(this.ownBitfield).cardinality();
+	}
+
 	private void printByteArray(byte[] bytes){
 		for (byte b : bytes) {
-			System.out.println(Integer.toBinaryString(b & 255 | 256).substring(1));
+			logging.writeLog(Integer.toBinaryString(b & 255 | 256).substring(1));
+			//System.out.println(Integer.toBinaryString(b & 255 | 256).substring(1));
 		}
 	}
 	/**
@@ -198,12 +209,31 @@ public class FileManager {
 		}
 		have.add(blockIdx);
 	}
+
+	/**
+	 * check if others is finished by checking the have HashSet
+	 *
+	 * @param      peerId    The peer id
+	 */
+	public boolean isOthersFinish(String peerId){
+		HashSet<Integer> have = this.otherPeerHave.get(peerId);
+		if(have == null) {
+			System.err.println("FileManager updateHave: no such peerId");
+			return false;
+		}
+		if(have.size() == blockNum) return true;
+		return false;
+	}
+
 	/**
 	 * Determines if file download is completed.
 	 *
 	 * @return     True if complete, False otherwise.
 	 */
 	public boolean isComplete(){
+		logging.writeLog(
+			"peer still interested size " + this.interested.size() + ", peer still downloading size " + this.downloading.size()
+		);
 		return (this.downloading.size() + this.interested.size() == 0);
 	}
 	/**
@@ -215,11 +245,9 @@ public class FileManager {
 	 */
 	public synchronized boolean isInterested(String peerId){
 		if(this.interested.size() == 0) return false;
-		
-		logging.writeLog("check isInterested or not");
 		ArrayList<Integer> interested = new ArrayList<Integer>(this.interested);
 
-		logging.writeLog("ineterested in " + interested.size() + " # of blocks");
+		logging.writeLog("check interested in " + interested.size() + " # of blocks from peer " + peerId);
 		// get intersection of interested and have
 		logging.writeLog(String.format("PeerId: %s retain %s of blocks", peerId, this.otherPeerHave.get(peerId).size()));
 		interested.retainAll(this.otherPeerHave.get(peerId));
@@ -234,13 +262,21 @@ public class FileManager {
 	 * @return     -1 when not interested, otherwise return interested block index.
 	 */
 	public synchronized int pickInterestedFileBlock(String peerId){
-		if(this.interested.size() == 0) return -1;
+		Random rd = new Random();
+		int blockIdx = -1;
+		if(this.interested.size() == 0) {
+			ArrayList<Integer> downloading = new ArrayList<Integer>(this.downloading);
+			if(downloading.size() == 0) {
+				return blockIdx;
+			}
+			blockIdx = downloading.get(rd.nextInt(downloading.size()));
+			return blockIdx;
+		}
 		ArrayList<Integer> interested = new ArrayList<Integer>(this.interested);
 		// get intersection of interested and have
 		interested.retainAll(this.otherPeerHave.get(peerId));
 		if(interested.size() == 0) return -1;
-		Random rd = new Random();
-		int blockIdx = interested.get(rd.nextInt(interested.size()));
+		blockIdx = interested.get(rd.nextInt(interested.size()));
 		this.downloading.add(blockIdx);
 		this.interested.remove(blockIdx);
 		return blockIdx;

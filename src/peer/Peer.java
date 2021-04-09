@@ -4,7 +4,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
-import utils.LogHandler;
 import utils.Tools;
 
 public class Peer {
@@ -24,6 +23,10 @@ public class Peer {
   private boolean isChoking = false;
   private boolean isDownLoading = false;
   private double downloadRate = 0.0;
+  /**
+   * Using to check if every other node is finish
+   */
+  private boolean isComplete = false;
   
   public Peer() {
     
@@ -85,6 +88,10 @@ public class Peer {
 
   public boolean getHasFile() {
     return this.hasFile;
+  }
+
+  public boolean getIsComplete() {
+    return this.isComplete;
   }
 
   /**
@@ -150,4 +157,8 @@ public class Peer {
       this.lock.unlock();
     }
 	}
+
+  public void setIsComplete() {
+    this.isComplete = true;
+  }
 }
