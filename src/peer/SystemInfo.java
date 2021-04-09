@@ -36,8 +36,8 @@ public final class SystemInfo {
    *    Use for communicating between Interval thread and main Server thread.
    */
   private Peer host;
-  boolean isSystemComplete;
-  ServerSocket serverListener;
+  private boolean isSystemComplete;
+  private ServerSocket serverListener;
   private Timer PreferSelectTimer;
   private Timer OptSelectTimer;
 

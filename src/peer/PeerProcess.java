@@ -151,6 +151,7 @@ public class PeerProcess {
 			}
 
 			logging.writeLog("(peer process) Number of thread create by peer: " + java.lang.Thread.activeCount());
+			return;
 		}
 		catch (Exception e) {
 			e.printStackTrace();
