@@ -136,7 +136,7 @@ public class Handshake
 	}
 	
 	// Decodes the byte array HandshakeMessage and loads to the object HandshakeMessage
-	public static Handshake decodeMessage(byte[] receivedMessage) {
+	public static Handshake decodeMessage(byte[] receivedMessage) throws Exception {
 
 		Handshake handshakeMessage = null;
 		byte[] msgHeader = null;
@@ -158,6 +158,17 @@ public class Handshake
 			System.arraycopy(receivedMessage, HANDSHAKE_HEADER_LENGTH
 					+ HANDSHAKE_ZEROBITS_LENGTH, msgPeerID, 0,
 					HANDSHAKE_PEERID_LENGTH);
+
+
+			//change handshake_header to received header
+
+
+			for (int i = 0; i < msgHeader.length; i++) {
+				byte[] handshake_header_byte = HANDSHAKE_HEADER.getBytes();
+				if (msgHeader[i] != handshake_header_byte[i]) {
+					throw new Exception("Invalid Header");
+				}
+			}
 
 			// Populate handshakeMessage entity
 			handshakeMessage.setHeader(msgHeader);
