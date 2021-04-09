@@ -209,12 +209,31 @@ public class FileManager {
 		}
 		have.add(blockIdx);
 	}
+
+	/**
+	 * check if others is finished by checking the have HashSet
+	 *
+	 * @param      peerId    The peer id
+	 */
+	public boolean isOthersFinish(String peerId){
+		HashSet<Integer> have = this.otherPeerHave.get(peerId);
+		if(have == null) {
+			System.err.println("FileManager updateHave: no such peerId");
+			return false;
+		}
+		if(have.size() == blockNum) return true;
+		return false;
+	}
+
 	/**
 	 * Determines if file download is completed.
 	 *
 	 * @return     True if complete, False otherwise.
 	 */
 	public boolean isComplete(){
+		logging.writeLog(
+			"peer still interested size " + this.interested.size() + ", peer still downloading size " + this.downloading.size()
+		);
 		return (this.downloading.size() + this.interested.size() == 0);
 	}
 	/**

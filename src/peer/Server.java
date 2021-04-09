@@ -30,7 +30,6 @@ public class Server extends Thread{
 	private static LogHandler logging = new LogHandler();
 	private Timer PreferSelectTimer = new Timer();
 	private Timer OptSelectTimer = new Timer();
-	boolean isFinish = false;
 
 	public Server() {
 		this.hostPeer = sysInfo.getHostPeer();
@@ -66,7 +65,7 @@ public class Server extends Thread{
 					));
 					clientNum++;
 
-					if(this.hostPeer.getIsFinish()) {
+					if(this.hostPeer.getIsComplete()) {
 						logging.writeLog("All nodes are ‘end’, close Server thread");
 						return;
 					}
@@ -114,7 +113,7 @@ public class Server extends Thread{
 
 		public void run() {
 			try {
-				if(sysInfo.getHostPeer().getIsFinish()) {
+				if(sysInfo.getIsSystemComplete()) {
 					logging.writeLog("All nodes are ‘end’, close PreferSelect timer");
 					return;
 				}
@@ -144,20 +143,26 @@ public class Server extends Thread{
 		 */
 		private int selectNodes() throws IOException, CustomExceptions {
 			logging.writeLog("start PreferSelect - selecting the nodes to pass file pieces");
+			logging.writeLog("selecting interested node");
+			
+			interestMap.clear();
+			for(Entry<String, Peer> n: neighborMap.entrySet()) {
+				if(n.getValue().getHasFile()) continue;
+				if(n.getValue().getIsComplete()) {
+					
+				};
+				if(n.getValue().getIsInterested()) {
+					interestMap.put(n.getKey(), n.getValue());
+				}
+			}
+
+			if(interestMap.isEmpty()) return 0;
+			
 			if(sysInfo.getHostPeer().getHasFile() || (fm != null && fm.isComplete())) {
 				randomlySelect = true;
 			}
 			
 			testRandomDownLoadRate();
-			interestMap.clear();
-			for(Entry<String, Peer> n: neighborMap.entrySet()) {
-				if(n.getValue().getIsInterested() && !n.getValue().getIsFinish()) {
-					interestMap.put(n.getKey(), n.getValue());
-				}
-			}
-
-			logging.writeLog("selecting interested node");
-			if(interestMap.isEmpty()) return 0;
 			
 			List<Entry<String, Peer>> interestList = new ArrayList<Entry<String, Peer>>(interestMap.entrySet());
 			if(interestMap.size() > preferN) {
@@ -186,8 +191,12 @@ public class Server extends Thread{
 					if(unChokingMap.get(i.getKey()) != null) {
 						// b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
 						String key = i.getKey();
+						logging.writeLog("try to send choke to client " + key);
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
+						}
+						if(serverConnMap.get(key) == null) {
+							throw new CustomExceptions(ErrorCode.missServerConn, "miss key: " + key);
 						}
 						OutputStream outConn = serverConnMap.get(key).getOutputStream();
 						actMsgMap.get(key).send(outConn, ActualMsg.CHOKE, 0);
@@ -201,9 +210,12 @@ public class Server extends Thread{
 					if(chokingMap.get(i.getKey()) != null) {
 						// c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap  
 						String key = i.getKey();
-						
+						logging.writeLog("try to send unchoke to client " + key);
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
+						}
+						if(serverConnMap.get(key) == null) {
+							throw new CustomExceptions(ErrorCode.missServerConn, "miss key: " + key);
 						}
 						OutputStream outConn = serverConnMap.get(key).getOutputStream();
 						actMsgMap.get(key).send(outConn, ActualMsg.UNCHOKE, 0);
@@ -239,16 +251,16 @@ public class Server extends Thread{
 				logging.writeLog("start sending new obtain blocks");
 				for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
 					String key = n.getKey();
-					if(!n.getValue().getIsFinish()) {
-						if(actMsgMap.get(key) != null) { 
-							OutputStream outConn = serverConnMap.get(key).getOutputStream();
-							for(Integer blockIdx: obtainBlocks) {
-								actMsgMap.get(key).send(outConn, ActualMsg.HAVE, blockIdx);
-							}
+					if(n.getValue().getHasFile()) continue;
+					if(n.getValue().getIsComplete()) continue;
+					if(actMsgMap.get(key) != null) { 
+						OutputStream outConn = serverConnMap.get(key).getOutputStream();
+						for(Integer blockIdx: obtainBlocks) {
+							actMsgMap.get(key).send(outConn, ActualMsg.HAVE, blockIdx);
 						}
-						else {
-							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
-						}
+					}
+					else {
+						throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
 					}
 				}
 			}
@@ -290,7 +302,7 @@ public class Server extends Thread{
 		 * Assign Random download rate to nodes
 		 */
 		private void testRandomDownLoadRate() {	
-			for(Entry<String, Peer> n: neighborMap.entrySet()) {
+			for(Entry<String, Peer> n: interestMap.entrySet()) {
 				n.getValue().setDownloadRate(R.nextDouble());
 			}
 		}
@@ -383,7 +395,7 @@ public class Server extends Thread{
 				actMsgMap.put(this.client.getId(), this.actMsg);
 
 				if(serverConnMap.get(this.client.getId()) == null) {
-					throw new CustomExceptions(ErrorCode.missConnection, "missing connection object, recreate the socket");
+					throw new CustomExceptions(ErrorCode.missServerConn, "missing connection object, recreate the socket");
 				}
 
 				if(actMsgMap.get(this.client.getId()) == null) {
@@ -420,7 +432,18 @@ public class Server extends Thread{
 			}
 			finally {
 				try{
-					logging.writeLog(this.client.getId() + " client is finish, server close rest connection handler with client");
+					if(this.client != null) {
+						if(this.client.getIsComplete()) {
+							logging.writeLog(
+								"(Server handler thread) " + this.client.getId() + " client is finish, server closing connection handler with client"
+							);
+						}
+						else {
+							logging.writeLog(
+								"(Server handler thread) " + this.client.getId() + " connection closing due to error, connection handler with client"
+							);
+						}
+					}
 					connection.close();
 				}
 				catch(IOException e){
@@ -432,7 +455,7 @@ public class Server extends Thread{
 
 			// check if all neighbor is finish or hasfile
 			if(isAllNeighborFinish()) {
-				sysInfo.getHostPeer().setIsFinish();
+				sysInfo.setIsSystemComplete();
 			}
 			return;
 		}
@@ -479,9 +502,9 @@ public class Server extends Thread{
 				 * 1. remove client from all map
 				 * 2. remove object from connection & actMsg map 
 				 */
-				Peer p = sysInfo.getNeighborMap().get(this.client.getId());
-				p.setIsFinish();
-				sysInfo.getNeighborMap().put(this.client.getId(), p);
+				logging.writeLog("(server handler) notify that peer " + this.client.getId() + " isComplete");
+				this.client.setIsComplete();
+				sysInfo.getNeighborMap().put(this.client.getId(), this.client);
 				
 				removePeerFromMap();
 				// remove connection and
@@ -520,11 +543,11 @@ public class Server extends Thread{
 		}
 
 		private boolean isAllNeighborFinish() {
-			logging.writeLog("check if all neighbor isFinish or not");
+			logging.writeLog("check if all neighbor isComplete or not");
 			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
 				Peer check = n.getValue();
 				if(check.getHasFile()) continue;
-				if(!check.getIsFinish()) return false;
+				if(!check.getIsComplete()) return false;
 			}
 			return true;
 		}

@@ -26,7 +26,7 @@ public class Peer {
   /**
    * Using to check if every other node is finish
    */
-  private boolean isFinish = false;
+  private boolean isComplete = false;
   
   public Peer() {
     
@@ -90,8 +90,8 @@ public class Peer {
     return this.hasFile;
   }
 
-  public boolean getIsFinish() {
-    return isFinish;
+  public boolean getIsComplete() {
+    return this.isComplete;
   }
 
   /**
@@ -158,7 +158,7 @@ public class Peer {
     }
 	}
 
-  public void setIsFinish() {
-    this.isFinish = true;
+  public void setIsComplete() {
+    this.isComplete = true;
   }
 }

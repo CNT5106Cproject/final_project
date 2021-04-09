@@ -24,7 +24,6 @@ public final class SystemInfo {
   private static int retryLimit = 10;
   private static long retryInr = 3000; // retry interval (ms)
   private static long clientRequestPieceInr = 1500; // (ms)
-
   /**
    * Host peer objects
    * - host 
@@ -36,6 +35,7 @@ public final class SystemInfo {
    *    Use for communicating between Interval thread and main Server thread.
    */
   private Peer host;
+  boolean isSystemComplete;
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
@@ -69,6 +69,7 @@ public final class SystemInfo {
     singletonObj = new SystemInfo();
     singletonObj.initHostPeer(host);
     singletonObj.initNeighborMap(neighborMap);
+    singletonObj.isSystemComplete = false;
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -141,6 +142,10 @@ public final class SystemInfo {
   public void addNewObtainBlocks(int blockIdx) {
     this.newObtainBlocks.add(blockIdx);
   }
+
+  public void setIsSystemComplete() {
+    this.isSystemComplete = true;
+  }
   /**
   * Get system peer and communication objects or params
   */
@@ -148,6 +153,10 @@ public final class SystemInfo {
     return this.host;
   }
   
+  public boolean getIsSystemComplete() {
+    return this.isSystemComplete;
+  }
+
   public HashMap<String, Peer> getNeighborMap() {
     this.lock.lock();
 		try{
