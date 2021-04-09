@@ -38,7 +38,7 @@ public class Server extends Thread{
 				/**
 				 * Set up the unckoking & opt peer selection mechanism
 				 */
-				logging.writeLog("Establishing Timer for PreferSelect with interval: " + sysInfo.getUnChokingInr()*1000 + "(ms)");
+				logging.writeLog("(server thread) Establishing Timer for PreferSelect with interval: " + sysInfo.getUnChokingInr()*1000 + "(ms)");
 				sysInfo.initChokingMap();
 				PreferSelect taskPrefSelect = new PreferSelect();
 				sysInfo.getPreferSelectTimer().schedule(taskPrefSelect, 0, sysInfo.getUnChokingInr()*1000);
@@ -54,7 +54,7 @@ public class Server extends Thread{
 					// System.out.println("Client "  + clientNum + " is connected!");
 					
 					logging.writeLog(String.format(
-						"(server) # %s client is connected",
+						"(server thread) # %s client is connected",
 						clientNum
 					));
 					clientNum++;
@@ -73,6 +73,7 @@ public class Server extends Thread{
 				logging.writeLog("severe", "(server thread) ServerSocket IOException: " + trace);
 			}
 		}
+		return;
 	}
 
 	/** 
@@ -110,8 +111,13 @@ public class Server extends Thread{
 			try {
 				if(isAllNeighborFinish()) {
 					sysInfo.setIsSystemComplete();
+					logging.writeLog("All nodes are ‘end’, close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
+					for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
+						Socket handlerSock = sConn.getValue();
+						handlerSock.close();
+					}
+					Tools.timeSleep(500);
 					logging.writeLog("All nodes are ‘end’, close server listener");
-					// sysInfo.getServerThread().stop();
 					sysInfo.getServerListener().close();
 					Tools.timeSleep(500);
 					logging.writeLog("All nodes are ‘end’, cancel PreferSelectTimer");
@@ -439,23 +445,21 @@ public class Server extends Thread{
 				logging.writeLog("severe", "(Server handler thread) CustomExceptions with client: " + peerId + ", ex:" + trace);
 			}
 			catch(IOException e){
-				String trace = Tools.getStackTrace(e);
 				String peerId = this.client != null ? this.client.getId() : "";
-				logging.writeLog("severe", "(Server handler thread) IOException with client: " + peerId + ", ex:" + trace);
+				if(sysInfo.getIsSystemComplete()) {
+					logging.writeLog("(Server handler thread) system is complete, close handler with " + peerId);
+				}
+				else {
+					String trace = Tools.getStackTrace(e);
+					logging.writeLog("severe", "(Server handler thread) IOException with client " + peerId + ", ex:" + trace);
+				}
 			}
 			finally {
 				try{
 					if(this.client != null) {
-						if(this.client.getIsComplete()) {
-							logging.writeLog(
-								"(Server handler thread) " + this.client.getId() + " client is finish, server closing connection handler with client"
-							);
-						}
-						else {
-							logging.writeLog(
-								"(Server handler thread) " + this.client.getId() + " connection closing due to error, connection handler with client"
-							);
-						}
+						logging.writeLog(
+							"(Server handler thread) " + this.client.getId() + " connection closing, connection handler with client"
+						);
 					}
 					connection.close();
 				}
