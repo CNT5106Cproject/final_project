@@ -185,12 +185,12 @@ public final class LogHandler {
   
   // 2. change of preferred neighbors
   public void logChangePrefersPeers() {
-
+    // TODO
   }
 
   // 3. change of optimistically unchoked neighbor
   public void logChangeUnchokedPeer() {
-
+    // TODO
   }
   
   // 4. unchoking
@@ -277,13 +277,18 @@ public final class LogHandler {
     logger.info(msg);
   }
 
-  public void logSendEndMsg(String recvId) {
-    String msg = String.format("Peer [%s] (server) sending ‘end’ message to [%s]", sysInfo.getHostPeer().getId(), recvId);
+  public void logSendCompleteMsg(String recvId) {
+    String msg = String.format("Peer [%s] (server) sending ‘complete’ message to [%s]", sysInfo.getHostPeer().getId(), recvId);
     logger.fine(msg);
   }
 
-  public void logReceiveEndMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (server) received the ‘end’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+  public void logReceiveCompleteMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (server) received the ‘complete’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logSystemIsComplete() {
+    String msg = String.format("Peer [%s] closed, all nodes are complete", sysInfo.getHostPeer().getId());
     logger.info(msg);
   }
 }

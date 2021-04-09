@@ -236,9 +236,9 @@ public class Client extends Peer implements Runnable {
 				// The file download has complete
 				logging.logCompleteFile();
 				this.clientPeer.setIsComplete();
-				logging.writeLog("send END msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
-				// send end message to all server
-				sendEndMessageToAll();
+				logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
+				// send complete message to all server
+				sendCompleteMessageToAll();
 				return true;
 			}
 
@@ -270,12 +270,12 @@ public class Client extends Peer implements Runnable {
 		return 0;
 	}
 
-	private void sendEndMessageToAll() throws IOException {
-		logging.writeLog("send END msg to # " + sysInfo.getClientConnMap().size() + " servers");
+	private void sendCompleteMessageToAll() throws IOException {
+		logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientConnMap().size() + " servers");
 		for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
-			logging.logSendEndMsg(conn.getKey());
+			logging.logSendCompleteMsg(conn.getKey());
 			OutputStream outConn = conn.getValue().getOutputStream();
-			this.actMsg.send(outConn, ActualMsg.END, 0);
+			this.actMsg.send(outConn, ActualMsg.COMPLETE, 0);
 		}
 	}
 	

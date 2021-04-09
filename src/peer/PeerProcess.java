@@ -118,9 +118,7 @@ public class PeerProcess {
 			logging.logEstablishPeer();
 
 			/** Set up peer's file manager */
-
-			// TODO 
-			// 1. Check file exist and hasFile flag
+			// Check file exist and hasFile flag
 			String peerFileDir = cfgDir + sysInfo.getHostPeer().getId() + '/' + sysInfo.getFileName();
 			String mode = sysInfo.getHostPeer().getHasFile() ? "r" : "rw";
 			FileManager fm = FileManager.getInstance(

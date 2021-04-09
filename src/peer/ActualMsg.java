@@ -11,7 +11,7 @@ import utils.LogHandler;
 public class ActualMsg{
 	Peer interConnPeer; // the other peer communicating with msg
 	// pretend to be enum
-	public static byte END = 0;
+	public static byte COMPLETE = 0;
 	public static byte CHOKE = 1;
 	public static byte UNCHOKE = 2;
 	public static byte INTERESTED = 3;
@@ -52,7 +52,7 @@ public class ActualMsg{
 
 	/**
 	 * send() for 
-	 * (1) END CHOKE UNCHOKE INTERESTED NOTINTERESTED
+	 * (1) COMPLETE CHOKE UNCHOKE INTERESTED NOTINTERESTED
 	 * (2) HAVE REQUEST
 	 * @param      out          The out
 	 * @param      type         The type
