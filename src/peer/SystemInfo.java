@@ -40,11 +40,19 @@ public final class SystemInfo {
   private ServerSocket serverListener;
   private Timer PreferSelectTimer;
   private Timer OptSelectTimer;
-
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
+  
+  /**
+   * Maps for Preferred Selection
+   */
   private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
+
+  /**
+   * Map for Optimistical Select
+   */
+  private Peer optUnchokingPeer = new Peer();
 
   // Multiple handlers will modify and get this object - use ConcurrentHashMap
   private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
@@ -158,6 +166,15 @@ public final class SystemInfo {
   public void setIsSystemComplete() {
     this.isSystemComplete = true;
   }
+
+  /**
+   * Assign optimistically unchoked peer
+   * @param selected
+   */
+  public void setOptUnchokingPeer(Peer selected) {
+    this.optUnchokingPeer = selected;
+  }
+
   /**
   * Get system peer and communication objects or params
   */
@@ -175,6 +192,10 @@ public final class SystemInfo {
 
   public Timer getPreferSelectTimer() {
     return this.PreferSelectTimer;
+  }
+
+  public Timer getOptSelectTimer() {
+    return this.OptSelectTimer;
   }
 
   public HashMap<String, Peer> getNeighborMap() {
@@ -197,10 +218,6 @@ public final class SystemInfo {
 		}
   }
 
-  public void clearInterestMap() {
-    this.interestMap.clear();
-  }
-
   public HashMap<String, Peer> getUnChokingMap() {
     this.lock.lock();
 		try{
@@ -209,10 +226,6 @@ public final class SystemInfo {
 		finally{
 			this.lock.unlock();
 		}
-  }
-
-  public void clearUnChokingMap() {
-    this.unChokingMap.clear();
   }
 
   public HashMap<String, Peer> getChokingMap() {
@@ -225,6 +238,10 @@ public final class SystemInfo {
 		}
   }
   
+  public Peer getOptUnchokingPeer() {
+    return this.optUnchokingPeer;
+  }
+
   public ConcurrentHashMap<String, Socket> getServerConnMap() {
     return this.serverConnMap;
   }

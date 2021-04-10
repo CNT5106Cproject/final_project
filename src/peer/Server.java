@@ -11,7 +11,6 @@ import java.util.Random;
 import java.util.TimerTask;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
@@ -38,11 +37,14 @@ public class Server extends Thread{
 				/**
 				 * Set up the unckoking & opt peer selection mechanism
 				 */
-				logging.writeLog("(server thread) Establishing Timer for PreferSelect with interval: " + sysInfo.getUnChokingInr()*1000 + "(ms)");
+				logging.writeLog("(server thread) Establishing Timer for PreferSelect with interval: " + sysInfo.getUnChokingInr() + "(sec)");
 				sysInfo.initChokingMap();
 				PreferSelect taskPrefSelect = new PreferSelect();
 				sysInfo.getPreferSelectTimer().schedule(taskPrefSelect, 0, sysInfo.getUnChokingInr()*1000);
-				// this.OptSelectTimer.schedule(optSelect, sysInfo.getOptUnChokingInr());
+				
+				logging.writeLog("(server thread) Establishing Timer for OptSelect with interval: " + sysInfo.getOptUnChokingInr() + "(sec)");
+				OptSelect taskOptSelect = new OptSelect();
+				sysInfo.getOptSelectTimer().schedule(taskOptSelect, 0, sysInfo.getOptUnChokingInr()*1000);
 
 				int clientNum = 0;
 				while(true) {
@@ -144,6 +146,8 @@ public class Server extends Thread{
 			logging.writeLog("All nodes are 'complete', close server listener");
 			sysInfo.getServerListener().close();
 			Tools.timeSleep(500);
+			logging.writeLog("All nodes are 'complete', cancel OptSelectTimer");
+			sysInfo.getOptSelectTimer().cancel();
 			logging.writeLog("All nodes are 'complete', cancel PreferSelectTimer");
 			sysInfo.getPreferSelectTimer().cancel();
 		}
@@ -167,19 +171,17 @@ public class Server extends Thread{
 		 * 4. depend on the situation to handle the selected nodes and unselected nodes
 		 * 		a.unchoke -> unchoke => put key in unchokeMap (continue receiving 'request in the reading buffer')
 		 * 		b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
+		 * 													but if the peer is optimistically unchoked, leave it alone
 		 * 		c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap
 		 * 		d.choke -> choke => put key in chokeMap
 		 */
 		private int selectNodes() throws IOException, CustomExceptions {
-			logging.writeLog("start PreferSelect - selecting the nodes to pass file pieces");
-			logging.writeLog("selecting interested node");
+			logging.writeLog("PreferSelect - start selecting the nodes to pass file pieces");
 			
 			interestMap.clear();
 			for(Entry<String, Peer> n: neighborMap.entrySet()) {
 				if(n.getValue().getHasFile()) continue;
-				if(n.getValue().getIsComplete()) {
-					
-				};
+				if(n.getValue().getIsComplete()) continue;
 				if(n.getValue().getIsInterested()) {
 					interestMap.put(n.getKey(), n.getValue());
 				}
@@ -207,7 +209,7 @@ public class Server extends Thread{
 			}
 			
 			for(Entry<String, Peer> i: interestList) {
-				logging.writeLog(String.format("%s download rate: %s", i.getKey(), i.getValue().getDownloadRate()));
+				logging.writeLog(String.format("PreferSelect %s download rate: %s", i.getKey(), i.getValue().getDownloadRate()));
 			}
 			/**
 			 * 4. depend on the situation to handle the selected nodes and unselected nodes
@@ -216,14 +218,15 @@ public class Server extends Thread{
 			for(Entry<String, Peer> i: interestList) {
 				if(count > preferN) {
 					// Not been picked, choke them
+					if(i.getKey() == sysInfo.getOptUnchokingPeer().getId()) continue;
 					if(unChokingMap.get(i.getKey()) != null) {
 						// b.unchoke -> choke => send 'choke', remove from unchokeMap, put key in chokeMap
 						String key = i.getKey();
 						if(actMsgMap.get(key) == null) { 
-							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
+							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerId: " + key);
 						}
 						if(serverConnMap.get(key) == null) {
-							throw new CustomExceptions(ErrorCode.missServerConn, "miss key: " + key);
+							throw new CustomExceptions(ErrorCode.missServerConn, "miss peerId: " + key);
 						}
 						OutputStream outConn = serverConnMap.get(key).getOutputStream();
 						actMsgMap.get(key).send(outConn, ActualMsg.CHOKE, 0);
@@ -238,10 +241,10 @@ public class Server extends Thread{
 						// c.choke -> unchoke => send 'unchoke', remove from chokeMap put key in unchokeMap  
 						String key = i.getKey();
 						if(actMsgMap.get(key) == null) { 
-							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss key: " + key);
+							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerId: " + key);
 						}
 						if(serverConnMap.get(key) == null) {
-							throw new CustomExceptions(ErrorCode.missServerConn, "miss key: " + key);
+							throw new CustomExceptions(ErrorCode.missServerConn, "miss peerId: " + key);
 						}
 						OutputStream outConn = serverConnMap.get(key).getOutputStream();
 						actMsgMap.get(key).send(outConn, ActualMsg.UNCHOKE, 0);
@@ -252,7 +255,6 @@ public class Server extends Thread{
 				}
 				count ++;
 			}
-			
 			logging.logChangePrefersPeers();
 			return 0;
 		}
@@ -264,9 +266,9 @@ public class Server extends Thread{
 		 */
 		private void sendNewObtainList() throws IOException, CustomExceptions {
 			List<Integer> obtainBlocks = sysInfo.getNewObtainBlocksCopy();
-			logging.writeLog("new obtain block size: " + obtainBlocks.size());
+			logging.writeLog("PreferSelect new obtain block size: " + obtainBlocks.size());
 			if(obtainBlocks.size() != 0) {
-				logging.writeLog("start sending new obtain blocks");
+				logging.writeLog("PreferSelect start sending new obtain blocks");
 				for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
 					String key = n.getKey();
 					if(n.getValue().getHasFile()) continue;
@@ -285,13 +287,13 @@ public class Server extends Thread{
 		}
 		
 		private List<Entry<String, Peer>> shuffleByRandom(List<Entry<String, Peer>> interestList) {
-			logging.writeLog("start shuffleByRandom with interestList size: " + interestList.size());
+			logging.writeLog("PreferSelect shuffleByRandom with interestList size: " + interestList.size());
 			Collections.shuffle(interestList, R);
 			return interestList;
 		}
 
 		private List<Entry<String, Peer>> sortByDownload(List<Entry<String, Peer>> interestList) {
-			logging.writeLog("start sortByDownload with interestList size: " + interestList.size());
+			logging.writeLog("PreferSelect sortByDownload with interestList size: " + interestList.size());
 			if(interestList.size() > 0) {
 				/**
 				 * Compare the peer objects downloading rate
@@ -301,7 +303,6 @@ public class Server extends Thread{
 					public int compare(Entry<String, Peer> p1, Entry<String, Peer> p2) {
 						double r1 = p1.getValue().getDownloadRate();
 						double r2 = p2.getValue().getDownloadRate();
-
 						/**
 						 * In descending order.
 						 */
@@ -331,21 +332,98 @@ public class Server extends Thread{
 	*  This class will set an interval timer to make the opt unchoking decision.
 	*/
 	private static class OptSelect extends TimerTask {
-		private final ReentrantLock lock = new ReentrantLock();
-		// private final static int optUnchokingInr = sysInfo.getOptUnChokingInr();
-  	private final static int optCount = 1;
+		
 		Random R = new Random();
+		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
+		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+		private HashMap<String, Peer> neighborMap = sysInfo.getNeighborMap(); 
+		private HashMap<String, Peer> unChokingMap = sysInfo.getUnChokingMap();
+		private HashMap<String, Peer> chokingMap = sysInfo.getChokingMap();
+		List<Peer> interestList = new ArrayList<Peer>();
+		
 		/**
 		* OptimisticUnchokingInterval 10
 		* - 1 optimistically unchoked neighbor
     */
-		public void run() {
-
+		OptSelect() {
+			this.serverConnMap = sysInfo.getServerConnMap();
+			this.actMsgMap = sysInfo.getActMsgMap();
 		}
 
-		private int selectNodes() {
-			logging.writeLog("start OptSelect - selecting optimistically unchoked node");
-			logging.writeLog("selecting interested node");
+		public void run() {
+			try {
+				logging.writeLog("start OptSelect - selecting optimistically unchoked node with every: " + sysInfo.getOptUnChokingInr() + " sec");
+				selectNodes();
+			}
+			catch(CustomExceptions e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", trace);
+			}
+			catch(IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "Server OptSelect Timer IOException:" + trace);
+			}
+		}
+
+		/**
+		 * 1. select interest candidates
+		 * 2. random pick opt unchoking peer
+		 * 3. check if pick the same as previous -> return
+		 * 
+		 * 4. check the previous node -> if it's in unchoke map -> set it to choke 
+		 * 5. check the new node -> if it's in choke map -> set it to unchoke
+		 * @return
+		 * @throws IOException
+		 * @throws CustomExceptions
+		 */
+		private int selectNodes() throws IOException, CustomExceptions{
+			interestList.clear();
+			for(Entry<String, Peer> n: neighborMap.entrySet()) {
+				if(n.getValue().getHasFile()) continue;
+				if(n.getValue().getIsComplete()) continue;
+				if(n.getValue().getIsInterested()) {
+					interestList.add(n.getValue());
+				}
+			}
+			
+			logging.writeLog("OptSelect interestList size " + interestList.size());
+			if(interestList.isEmpty()) return 0;
+
+			Peer previousPeer = sysInfo.getOptUnchokingPeer();
+			Peer newPeer = interestList.get(R.nextInt(interestList.size()));
+			sysInfo.setOptUnchokingPeer(newPeer);
+			logging.writeLog("OptSelect previous node " + previousPeer.getId() + ", new node " + newPeer.getId());
+			logging.logChangeOptUnchokedPeer();
+			
+			// // 3. check if pick the same as previous -> return
+			if(newPeer.getId().equals(previousPeer.getId())) return 0;
+			
+			// 4. check the previous node -> if it's in unchoke map -> set it to choke 
+			if(unChokingMap.get(previousPeer.getId()) != null){
+				if(actMsgMap.get(previousPeer.getId()) == null) { 
+					throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerID: " + previousPeer.getId());
+				}
+				if(serverConnMap.get(previousPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerConn, "miss peerID: " + previousPeer.getId());
+				}
+				OutputStream outConn = serverConnMap.get(previousPeer.getId()).getOutputStream();
+				actMsgMap.get(previousPeer.getId()).send(outConn, ActualMsg.CHOKE, 0);
+				unChokingMap.remove(previousPeer.getId());
+				chokingMap.put(previousPeer.getId(), previousPeer);
+			}
+
+			if(chokingMap.get(newPeer.getId()) != null){
+				if(actMsgMap.get(newPeer.getId()) == null) { 
+					throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerID: " + newPeer.getId());
+				}
+				if(serverConnMap.get(newPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerConn, "miss peerID: " + newPeer.getId());
+				}
+				OutputStream outConn = serverConnMap.get(newPeer.getId()).getOutputStream();
+				actMsgMap.get(newPeer.getId()).send(outConn, ActualMsg.UNCHOKE, 0);
+				chokingMap.remove(newPeer.getId());
+				unChokingMap.put(newPeer.getId(), newPeer);
+			}
 			return 0;
 		}
 	}

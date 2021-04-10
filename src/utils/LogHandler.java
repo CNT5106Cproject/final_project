@@ -194,9 +194,9 @@ public final class LogHandler {
   }
 
   // 3. change of optimistically unchoked neighbor
-  public void logChangeOptUnchokedPeer(Peer sender) {
+  public void logChangeOptUnchokedPeer() {
     // TODO
-    String msg = String.format("Peer [%s] has the optimistically unchoked neighbor [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] has the optimistically unchoked neighbor [%s]", sysInfo.getHostPeer().getId(), sysInfo.getOptUnchokingPeer().getId());
     logger.info(msg);
   }
   
