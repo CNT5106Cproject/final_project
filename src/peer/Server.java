@@ -75,7 +75,6 @@ public class Server extends Thread{
 		}
 		return;
 	}
-
 	/** 
 	 *  This class will set an interval timer to make the unchoking-choking decision.
 	*/
@@ -110,21 +109,9 @@ public class Server extends Thread{
 		public void run() {
 			try {
 				if(isAllNeighborFinish()) {
-					sysInfo.setIsSystemComplete();
-					logging.writeLog("All nodes are ‘end’, close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
-					for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
-						Socket handlerSock = sConn.getValue();
-						handlerSock.close();
-					}
-					Tools.timeSleep(500);
-					logging.writeLog("All nodes are ‘end’, close server listener");
-					sysInfo.getServerListener().close();
-					Tools.timeSleep(500);
-					logging.writeLog("All nodes are ‘end’, cancel PreferSelectTimer");
-					sysInfo.getPreferSelectTimer().cancel();
+					processClosingServer();
 					return;
 				}
-
 				selectNodes();
 				sendNewObtainList();
 			}
@@ -136,6 +123,29 @@ public class Server extends Thread{
 				String trace = Tools.getStackTrace(e);
 				logging.writeLog("severe", "Server PreferSelect Timer sending msg failed:" + trace);
 			}
+		}
+
+		/**
+		 * After receiving every neighbors complete msg
+		 * 1. check and close all handler
+		 * 2. close server listener
+		 * 3. close all timer
+		 * @throws IOException
+		 */
+		public void processClosingServer() throws IOException{
+			sysInfo.setIsSystemComplete();
+			Tools.timeSleep(250);
+			logging.writeLog("All nodes are ‘end’, close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
+			for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
+				Socket handlerSock = sConn.getValue();
+				handlerSock.close();
+			}
+			Tools.timeSleep(500);
+			logging.writeLog("All nodes are ‘end’, close server listener");
+			sysInfo.getServerListener().close();
+			Tools.timeSleep(500);
+			logging.writeLog("All nodes are ‘end’, cancel PreferSelectTimer");
+			sysInfo.getPreferSelectTimer().cancel();
 		}
 
 		private boolean isAllNeighborFinish() {
@@ -244,16 +254,6 @@ public class Server extends Thread{
 				count ++;
 			}
 			
-			// logging.writeLog("show chokingMap:");
-			// for(Entry<String, Peer> n: chokingMap.entrySet()) {
-			// 	logging.writeLog(n.getKey());
-			// }
-
-			// logging.writeLog("show unChokingMap:");
-			// for(Entry<String, Peer> n: unChokingMap.entrySet()) {
-			// 	logging.writeLog(n.getKey());
-			// }
-
 			logging.logChangePrefersPeers();
 			return 0;
 		}
@@ -342,6 +342,12 @@ public class Server extends Thread{
     */
 		public void run() {
 
+		}
+
+		private int selectNodes() {
+			logging.writeLog("start OptSelect - selecting optimistically unchoked node");
+			logging.writeLog("selecting interested node");
+			return 0;
 		}
 	}
 
@@ -432,8 +438,8 @@ public class Server extends Thread{
 				while(true) {
 					msg_type = actMsg.recv(inConn);
 					if(msg_type != -1) {
-						boolean isEnd = reactions(msg_type);
-						if(isEnd) {
+						boolean isComplete = reactions(msg_type);
+						if(isComplete) {
 							// jump to close connections with client
 							break;
 						}

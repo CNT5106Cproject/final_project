@@ -86,7 +86,11 @@ public class Client extends Peer implements Runnable {
 						// Receive actual msg from server
 						msg_type = actMsg.recv(inConn);
 						if(msg_type != -1) {
-							reactions(msg_type, outConn);
+							boolean isComplete = reactions(msg_type, outConn);
+							if(isComplete) {
+								// jump to close connections with client
+								break;
+							}
 						}
 					}
 				}
@@ -158,6 +162,13 @@ public class Client extends Peer implements Runnable {
 		this.handShake = null;
 	}
 
+	private synchronized void processClosingClient() throws IOException{
+		logging.logCompleteFile();
+		this.clientPeer.setIsComplete();
+		logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
+		// send complete message to all server
+		sendCompleteMessageToAll();
+	}
 	/**
 	 * Reaction of client receiving the msg, base on the msg type 
 	 * @param msg_type
@@ -166,19 +177,23 @@ public class Client extends Peer implements Runnable {
 	 * @throws IOException
 	 */
 	private boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
-		if(this.clientPeer.getIsComplete()) return true;
 
 		if(msg_type == ActualMsg.BITFIELD) {
 			logging.logReceiveBitFieldMsg(this.targetHostPeer);
 			// update targetHostPeer's bitfield
 			byte[] b = actMsg.bitfieldMsg.getBitfield();
 			fm.insertBitfield(this.targetHostPeer.getId(), b, b.length);
-			// send interest or not
+
+			/**
+			 * Notice other peer is complete after receiving bitfield
+			 */
 			if(fm.isOthersFinish(this.targetHostPeer.getId())) {
 				logging.writeLog("(client) notify that peer " + this.targetHostPeer.getId() + " isComplete");
 				this.targetHostPeer.setIsComplete();
 				sysInfo.getNeighborMap().put(this.targetHostPeer.getId(), this.targetHostPeer);
 			}
+
+			// send interest or not
 			if(fm.isInterested(this.targetHostPeer.getId())) {
 				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
 			}
@@ -195,6 +210,16 @@ public class Client extends Peer implements Runnable {
 				blockIdx
 			));
 			fm.updateHave(this.targetHostPeer.getId(), blockIdx);
+
+			/**
+			 * Notice other peer is complete after receiving have
+			 */
+			if(fm.isOthersFinish(this.targetHostPeer.getId())) {
+				logging.writeLog("(client) notify that peer " + this.targetHostPeer.getId() + " isComplete");
+				this.targetHostPeer.setIsComplete();
+				sysInfo.getNeighborMap().put(this.targetHostPeer.getId(), this.targetHostPeer);
+			}
+
 			if(fm.isInterested(this.targetHostPeer.getId())) {
 				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
 			}
@@ -210,13 +235,19 @@ public class Client extends Peer implements Runnable {
 		}
 		else if(msg_type == ActualMsg.UNCHOKE) {
 			logging.logUnchoking(this.targetHostPeer);
+
+			if(this.clientPeer.getIsComplete()) return false;
+			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
+				processClosingClient();
+				return true;
+			}
 			/**
 			 * 1.choke -> unchoke 
 			 * 		=> set choke to unchoke -> start sending pieces msg until been choked
 			 * 2. unchoke -> unchoke
 			 * 		=> continue sending pieces message 
 			 */
-			if(this.clientPeer.getIsComplete()) return false;
+
 			if(clientPeer.getIsChoking()) {
 				clientPeer.setUnChoking();
 			}
@@ -235,13 +266,7 @@ public class Client extends Peer implements Runnable {
 			sysInfo.addNewObtainBlocks(blockIdx);
 			
 			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
-				// The file download has complete
-				logging.logCompleteFile();
-				this.clientPeer.setIsComplete();
-				logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
-				// send complete message to all server
-				sendCompleteMessageToAll();
-				Tools.timeSleep(500);
+				processClosingClient();
 				return true;
 			}
 
@@ -252,9 +277,9 @@ public class Client extends Peer implements Runnable {
 			Tools.timeSleep(200);
 			requestingPiece(this.targetHostPeer, outConn);
 		}
-		return true;
+		return false;
 	}
-
+	
 	/**
 	 * 1. request piece
 	 * @param sender
