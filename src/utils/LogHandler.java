@@ -76,7 +76,7 @@ public final class LogHandler {
     } catch (SecurityException e) {  
       e.printStackTrace();
     } catch (IOException e) {  
-      e.printStackTrace();  
+      e.printStackTrace();
     }
   }
 
@@ -194,9 +194,9 @@ public final class LogHandler {
   }
 
   // 3. change of optimistically unchoked neighbor
-  public void logChangeUnchokedPeer(Peer sender) {
+  public void logChangeOptUnchokedPeer(Peer sender) {
     // TODO
-    String msg = String.format("Peer [%s] as  the  optimistically  unchoked  neighbor [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] has the optimistically unchoked neighbor [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
   
@@ -212,21 +212,21 @@ public final class LogHandler {
     logger.info(msg);
   }
 
-  // 6. receiving ‘have’ message
+  // 6. receiving 'have' message
   public void logReceiveHaveMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘have’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] received the 'have' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
-  // 7. receiving ‘interested’ message
+  // 7. receiving 'interested' message
   public void logReceiveInterestMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] received the 'interested' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
-  // 8. receiving ‘not interested’ message
+  // 8. receiving 'not interested' message
   public void logReceiveNotInterestMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘not interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] received the 'not interested' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
@@ -261,7 +261,7 @@ public final class LogHandler {
   }
 
   public void logReceiveHandShakeMsg(String senderId) {
-    String msg = String.format("Peer [%s] received the ‘handshake’ message from [%s]", sysInfo.getHostPeer().getId(), senderId);
+    String msg = String.format("Peer [%s] received the 'handshake' message from [%s]", sysInfo.getHostPeer().getId(), senderId);
     logger.info(msg);
   }
 
@@ -270,27 +270,27 @@ public final class LogHandler {
   }
 
   public void logReceiveBitFieldMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (client) received the ‘bitfield’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] (client) received the 'bitfield' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
   public void logReceiveRequestMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (server) received the ‘request’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] (server) received the 'request' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
   public void logReceivePieceMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (client) received the ‘piece’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] (client) received the 'piece' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
   public void logSendCompleteMsg(String recvId) {
-    String msg = String.format("Peer [%s] (server) sending ‘complete’ message to [%s]", sysInfo.getHostPeer().getId(), recvId);
+    String msg = String.format("Peer [%s] (server) sending 'complete' message to [%s]", sysInfo.getHostPeer().getId(), recvId);
     logger.fine(msg);
   }
 
   public void logReceiveCompleteMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (server) received the ‘complete’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] (server) received the 'complete' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 

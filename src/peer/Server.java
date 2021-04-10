@@ -135,16 +135,16 @@ public class Server extends Thread{
 		public void processClosingServer() throws IOException{
 			sysInfo.setIsSystemComplete();
 			Tools.timeSleep(250);
-			logging.writeLog("All nodes are ‘end’, close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
+			logging.writeLog("All nodes are 'complete', close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
 			for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
 				Socket handlerSock = sConn.getValue();
 				handlerSock.close();
 			}
 			Tools.timeSleep(500);
-			logging.writeLog("All nodes are ‘end’, close server listener");
+			logging.writeLog("All nodes are 'complete', close server listener");
 			sysInfo.getServerListener().close();
 			Tools.timeSleep(500);
-			logging.writeLog("All nodes are ‘end’, cancel PreferSelectTimer");
+			logging.writeLog("All nodes are 'complete', cancel PreferSelectTimer");
 			sysInfo.getPreferSelectTimer().cancel();
 		}
 
