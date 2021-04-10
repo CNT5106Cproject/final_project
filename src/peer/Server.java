@@ -191,7 +191,7 @@ public class Server extends Thread{
 				randomlySelect = true;
 			}
 			
-			testRandomDownLoadRate();
+			// testRandomDownLoadRate();
 			
 			List<Entry<String, Peer>> interestList = new ArrayList<Entry<String, Peer>>(interestMap.entrySet());
 			if(interestMap.size() > preferN) {
@@ -205,11 +205,10 @@ public class Server extends Thread{
 					interestList = sortByDownload(interestList);
 				}
 			}
-
+			
 			for(Entry<String, Peer> i: interestList) {
 				logging.writeLog(String.format("%s download rate: %s", i.getKey(), i.getValue().getDownloadRate()));
 			}
-			
 			/**
 			 * 4. depend on the situation to handle the selected nodes and unselected nodes
 			 */

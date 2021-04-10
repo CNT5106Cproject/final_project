@@ -19,6 +19,12 @@ public class Client extends Peer implements Runnable {
 	private static FileManager fm = FileManager.getInstance();
 	private HandShake handShake;
 	private ActualMsg actMsg;
+	
+	/**
+	 * Use to count download rate
+	 */
+	private double downloadRate = 0; // MegabytesPerSec
+	private long startReadTime = 0;
 
 	/**
 	 * Create connection to target host: targetPort.
@@ -83,7 +89,8 @@ public class Client extends Peer implements Runnable {
 					
 					byte msg_type = -1;
 					while(true){
-						// Receive actual msg from server
+						// Receive msg from server
+						startReadTime = System.nanoTime();
 						msg_type = actMsg.recv(inConn);
 						if(msg_type != -1) {
 							boolean isComplete = reactions(msg_type, outConn);
@@ -254,7 +261,23 @@ public class Client extends Peer implements Runnable {
 			requestingPiece(this.targetHostPeer, outConn);
 		}
 		else if(msg_type == ActualMsg.PIECE) {
+			/**
+			 * 1. Set download rate
+			 * 2. write block into file
+			 * 3. add block to new obtain blocks list
+			 * 
+			 * 4. check if complete 
+			 * 		-> YES then start closing procsess
+			 * 		-> NO, continue
+			 * 5. if not choked -> continue requesting another piece
+			 */
+
 			logging.logReceivePieceMsg(this.targetHostPeer);
+			double spendSec = (double)(System.nanoTime() - this.startReadTime) / 1_000_000_000.0;
+			// MegabytesPerSec
+			this.downloadRate = (this.actMsg.pieceMsg.getMsgLen() / spendSec) / 1_000_000.0;
+			setDownloadRate();
+
 			int blockIdx = this.actMsg.pieceMsg.blockIdx;
 			int blockLen = fm.getBlockSize(blockIdx);
 			int isError = fm.write(blockIdx, this.actMsg.pieceMsg.getData(), blockLen);
@@ -263,6 +286,7 @@ public class Client extends Peer implements Runnable {
 				return false;
 			}
 			logging.logDownload(this.targetHostPeer, blockIdx, fm.getOwnBitfieldSize());
+
 			sysInfo.addNewObtainBlocks(blockIdx);
 			
 			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
@@ -280,6 +304,11 @@ public class Client extends Peer implements Runnable {
 		return false;
 	}
 	
+	private void setDownloadRate() {
+		Peer p = sysInfo.getNeighborMap().get(targetHostPeer.getId());
+		p.setDownloadRate(this.downloadRate);
+		this.downloadRate = 0;
+	}
 	/**
 	 * 1. request piece
 	 * @param sender
