@@ -63,7 +63,7 @@ public class FileManager {
 		int bitfieldBytesNum = this.blockNum/8 + ((remainderBits == 0)?0:1);
 		this.ownBitfield = new byte[bitfieldBytesNum];
 		if(mode != "rw" && mode != "r"){
-			System.err.println("FileManager init: unknown mode");
+			logging.writeLog("severe", "FileManager init: unknown mode");
 			return;
 		}
 		// open target file object
@@ -82,7 +82,7 @@ public class FileManager {
 			}
 		}
 		catch(IOException e){
-			System.err.println("FileManager init: error");
+			logging.writeLog("severe", "FileManager init: error");
 		}
 	}
 	private void buildOwnBitfield(int remainderBits){
@@ -204,7 +204,7 @@ public class FileManager {
 	public void updateHave(String peerId, int blockIdx){
 		HashSet<Integer> have = this.otherPeerHave.get(peerId);
 		if(have == null) {
-			System.err.println("FileManager updateHave: no such peerId");
+			logging.writeLog("severe", "FileManager updateHave: no such peerId");
 			return;
 		}
 		have.add(blockIdx);
@@ -218,7 +218,7 @@ public class FileManager {
 	public boolean isOthersFinish(String peerId){
 		HashSet<Integer> have = this.otherPeerHave.get(peerId);
 		if(have == null) {
-			System.err.println("FileManager updateHave: no such peerId");
+			logging.writeLog("severe", "FileManager updateHave: no such peerId");
 			return false;
 		}
 		if(have.size() == blockNum) return true;
@@ -303,11 +303,11 @@ public class FileManager {
 	 */
 	public int read(int blockIdx, byte[] b, int len){
 		if(b == null){
-			System.err.println("FileManager read: null buffer");
+			logging.writeLog("severe", "FileManager read: null buffer");
 			return -1;
 		}
 		if(blockIdx < 0 || blockIdx >= blockNum){
-			System.err.println("FileManager read: out of range");
+			logging.writeLog("severe", "FileManager read: out of range");
 			return -1;
 		}
 		int byteRead = 0;
@@ -319,7 +319,7 @@ public class FileManager {
 			this.file.read(b, 0, byteRead);
 		}	
 		catch(IOException | NullPointerException | IndexOutOfBoundsException e){
-			System.err.println("FileManager read: read failed");
+			logging.writeLog("severe", "FileManager read: read failed");
 			byteRead = -1;
 		}
 		finally{
@@ -338,16 +338,16 @@ public class FileManager {
 	 */			
 	public int write(int blockIdx, byte[] b, int len){
 		if(b == null){
-			System.err.println("FileManager write: null buffer");
+			logging.writeLog("severe", "FileManager write: null buffer");
 			return -1;
 		}
 		if(this.mode == "r"){
-			System.err.println("FileManager write: read mode instance");
+			logging.writeLog("severe", "FileManager write: read mode instance");
 			return -1;
 		}
 		if(blockIdx >= this.blockNum || blockIdx < 0 ||
 			getBlockSize(blockIdx) != len){
-			System.err.println("FileManager write: erroneous parameter");
+			logging.writeLog("severe", "FileManager write: erroneous parameter");
 			return -1;
 		}
 		this.lock.lock();
@@ -359,7 +359,7 @@ public class FileManager {
 			updateOwnBitfield(blockIdx);
 		}	
 		catch(IOException | NullPointerException | IndexOutOfBoundsException e){
-			System.err.println("FileManager write: write failed");
+			logging.writeLog("severe", "FileManager write: write failed");
 			byteWrite = -1;
 		}
 		finally{
@@ -375,22 +375,22 @@ public class FileManager {
 			this.file.close();
 		}
 		catch(IOException e){
-			System.err.println("FileManager close: failed");
+			logging.writeLog("severe", "FileManager close: failed");
 		}
 	}
 	public static void main(String args[])
 	{
-		FileManager client =  FileManager.getInstance("XZY","rw",161,10);
-		// System.out.println(client.blockNum);
-		FileManager b = FileManager.getInstance();
-		if(b == client) System.out.println("same");
-		// byte[] b = {(byte)0b10101010,(byte)0b11111111};
-		// client.insertBitfield(0,b,2);
-		// client.updateHave(0,1);
-		// client.write(127,"12345678".getBytes(),8);
-		// client.write(15,"abcdefgz".getBytes(),8);
-		// System.out.println(client.blockNum);
-		// System.out.println(client.lastBlockSize);
-		// client.close();
+		// FileManager client =  FileManager.getInstance("XZY","rw",161,10);
+		// // System.out.println(client.blockNum);
+		// FileManager b = FileManager.getInstance();
+		// if(b == client) System.out.println("same");
+		// // byte[] b = {(byte)0b10101010,(byte)0b11111111};
+		// // client.insertBitfield(0,b,2);
+		// // client.updateHave(0,1);
+		// // client.write(127,"12345678".getBytes(),8);
+		// // client.write(15,"abcdefgz".getBytes(),8);
+		// // System.out.println(client.blockNum);
+		// // System.out.println(client.lastBlockSize);
+		// // client.close();
 	}
 }
