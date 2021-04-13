@@ -22,7 +22,7 @@ In this mode, all peers will build locally with different port.
 1. compile  
 
    ```
-   sh ~/final_project/src/compileProcess.sh
+   sh ~/final_project/compileProcess.sh
    ```
 
    The java class will be established at  ~/final_project/project/
@@ -30,13 +30,13 @@ In this mode, all peers will build locally with different port.
 2. start process
 
    ```bash
-   sh ~/final_project/src/startPeers.sh
+   sh ~/final_project/startPeers.sh
    ```
 
 3. kill process if needed - run **/final_project/src/test/killAllTestingPeer.sh**
 
    ```
-   sh ~/final_project/src/test/killAllPeer.sh
+   sh ~/final_project/killAllPeer.sh
    ```
 
 
