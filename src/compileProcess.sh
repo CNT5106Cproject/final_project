@@ -1,2 +1,2 @@
-javac -d ../lib/ utils/*
-javac -d ../lib/ peer/*
+javac -Xlint -d ../project utils/*
+javac -Xlint -d ../project peer/*

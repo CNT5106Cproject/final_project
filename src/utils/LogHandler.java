@@ -23,7 +23,7 @@ public final class LogHandler {
 
   private FileHandler logFH = null; // Project descriptions log - info level
   private FileHandler debugLogFH = null; // Debug logs
-  private String logDir = "../log";
+  private String logDir = "../../log";
 
   private static Logger logger = null;
   private static SystemInfo sysInfo = SystemInfo.getSingletonObj();

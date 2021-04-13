@@ -15,7 +15,7 @@ public class PeerProcess {
 	private static String debugPeerInfoFN = "PeerInfo_debug.cfg";
   private static String SystemInfoFN = "Common.cfg";
 	private static String debugSystemInfoFN = "Common_debug.cfg";
-	private static String cfgDir = "../config/";
+	private static String cfgDir = "../project/";
 
 	/**
 	 * Read Peer Info config
@@ -36,6 +36,7 @@ public class PeerProcess {
 		}
 
 		try {
+			System.out.println("Working Directory = " + System.getProperty("user.dir"));
 			System.out.println(String.format("[%s] Start reading PeerInfo from %s", hostPeerId, cfgDir + fileName));
 			File cfgFile = new File(cfgDir + fileName);
 			Scanner fileReader = new Scanner(cfgFile);
@@ -119,7 +120,12 @@ public class PeerProcess {
 
 			/** Set up peer's file manager */
 			// Check file exist and hasFile flag
-			String peerFileDir = cfgDir + sysInfo.getHostPeer().getId() + '/' + sysInfo.getFileName();
+			String peerStoreDir = cfgDir + sysInfo.getHostPeer().getId();
+			File peerStoreFile = new File(peerStoreDir);
+			if(!peerStoreFile.exists()) {
+				peerStoreFile.mkdir();
+			}
+			String peerFileDir = peerStoreDir + '/' + sysInfo.getFileName();
 			String mode = sysInfo.getHostPeer().getHasFile() ? "r" : "rw";
 			FileManager fm = FileManager.getInstance(
 				peerFileDir,
