@@ -19,3 +19,6 @@ java -Duser.language=en -cp ../project peer.PeerProcess 1007 &
 java -Duser.language=en -cp ../project peer.PeerProcess 1008 &
 java -Duser.language=en -cp ../project peer.PeerProcess 1009 &
 echo "Deployed all peers succesfully."
+
+# Use for remote server demo
+# java -Duser.language=en -cp ~/final_project/project peer.PeerProcess 1001 &

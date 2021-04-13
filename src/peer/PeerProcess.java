@@ -15,7 +15,7 @@ public class PeerProcess {
 	private static String debugPeerInfoFN = "PeerInfo_debug.cfg";
   private static String SystemInfoFN = "Common.cfg";
 	private static String debugSystemInfoFN = "Common_debug.cfg";
-	private static String cfgDir = "../project/";
+	private static String cfgDir = "~/final_project/project/";
 
 	/**
 	 * Read Peer Info config
@@ -33,6 +33,7 @@ public class PeerProcess {
 			 * Use the testing config 
 			 */
 			fileName = debugPeerInfoFN;
+			cfgDir = "../project/";
 		}
 
 		try {
@@ -100,7 +101,7 @@ public class PeerProcess {
 	 * Main Process of the Peer
 	 */
 	public static void main(String[] args) {
-		boolean debug = true;
+		boolean debug = false;
 		try {
 			/* Must have at least peer ID */
 			if (args.length < 1) {
