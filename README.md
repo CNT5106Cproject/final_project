@@ -6,7 +6,9 @@
 
 ## Catalog
 * [Computer Networks Project](#computer-networks-project)
+  * [Catalog](#catalog)
   * [How to test?](#how-to-test)
+  * [How to manually run on remote server?](#how-to-manually-run-on-remote-server)
   * [Where is the log? How to check?](#where-is-the-log-how-to-check)
   * [Classes](#classes)
       * [5. ActualMsg](#5-actualmsg)
@@ -20,14 +22,14 @@
         * [Project description log functions](#project-description-log-functions)
         * [Error log functions](#error-log-functions)
         * [Other log functions](#other-log-functions)
+
+
 ## How to test?
 Please follow the cmd below, and use the cmd in script if needed any adjustment.
 
 Before running the script, please put the configurations and the default file directories in the path of 
 
 - **~/final_project/project/**
-
-
 
 If the **debug** in peerProcess is true, the program will it reads **PeerInfo_local.cfg** in the config path.
 
@@ -47,11 +49,46 @@ In this mode, all peers will build locally with different port.
    sh ~/final_project/startPeers.sh
    ```
 
-3. kill process if needed - run **/final_project/killAllPeer.sh**
+3. kill process if needed 
 
    ```
    sh ~/final_project/killAllPeer.sh
    ```
+
+
+
+## How to manually run on remote server?
+
+When you login into the server on csie, you could use these command to start the peer manually.
+
+Be aware that the configurations still needs to remain in 
+
+- **~/final_project/project/**
+
+Be sure your current directory is
+
+- **~/final_project/**
+
+1. compile - use script or javac directly
+    ```
+    sh ~/final_project/compileProcess.sh
+    ```
+
+    ```
+    javac -Xlint -d ./project src/peer/*.java src/utils/*.java
+    ```
+
+2. start process
+   ```
+   java -Duser.language=en -cp ~/final_project/project peer.PeerProcess 1001
+   ```
+
+3. kill process on ubuntu
+   ```
+   ps aux | grep java | grep peer.PeerProces | awk '{print $2}' | xargs /bin/kill
+   ```
+
+
 
 
 
