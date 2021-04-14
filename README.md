@@ -25,7 +25,7 @@ Please follow the cmd below, and use the cmd in script if needed any adjustment.
 
 Before running the script, please put the configurations and the default file directories in the path of 
 
-- **~/final_project/src/project/**
+- **~/final_project/project/**
 
 
 
@@ -47,7 +47,7 @@ In this mode, all peers will build locally with different port.
    sh ~/final_project/startPeers.sh
    ```
 
-3. kill process if needed - run **/final_project/src/test/killAllTestingPeer.sh**
+3. kill process if needed - run **/final_project/killAllPeer.sh**
 
    ```
    sh ~/final_project/killAllPeer.sh
