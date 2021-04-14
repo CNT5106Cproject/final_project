@@ -1,5 +1,3 @@
-package peer;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -10,6 +8,8 @@ import java.util.Map.Entry;
 import utils.CustomExceptions;
 import utils.ErrorCode;
 import utils.LogHandler;
+import peer.*;
+
 public class PeerProcess {
 	private static String peerInfoFN = "PeerInfo.cfg";
 	private static String debugPeerInfoFN = "PeerInfo_debug.cfg";
