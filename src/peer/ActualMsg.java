@@ -62,6 +62,7 @@ public class ActualMsg{
 	 */
 	public void send(OutputStream out, byte type, int blockIdx) throws IOException{
 		ObjectOutputStream opStream = new ObjectOutputStream(out);
+		opStream.reset();
 		if(type <= NOTINTERESTED){
 			this.noPayloadMsg.setData(1,type);
 			opStream.writeObject(this.noPayloadMsg);
@@ -87,6 +88,7 @@ public class ActualMsg{
 	 */
 	public void send(OutputStream out, byte type, byte[] bitfield) throws IOException{
 		ObjectOutputStream opStream = new ObjectOutputStream(out);
+		opStream.reset();
 		if(type != BITFIELD) {
 			System.err.println("ActualMsg send: wrong type");
 			return;
@@ -107,6 +109,7 @@ public class ActualMsg{
 	 */
 	public void send(OutputStream out, byte type, int blockIdx, byte[] data) throws IOException{
 		ObjectOutputStream opStream = new ObjectOutputStream(out);
+		opStream.reset();
 		if(type != PIECE) {
 			System.err.println("ActualMsg send: wrong type");
 			return;
