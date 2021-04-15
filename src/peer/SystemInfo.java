@@ -40,6 +40,7 @@ public final class SystemInfo {
   private ServerSocket serverListener;
   private Timer PreferSelectTimer;
   private Timer OptSelectTimer;
+  private Timer isSystemCompleteTimer;
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
   
   /**
@@ -88,6 +89,7 @@ public final class SystemInfo {
     singletonObj.isSystemComplete = false;
     singletonObj.PreferSelectTimer = new Timer();
     singletonObj.OptSelectTimer = new Timer();
+    singletonObj.isSystemCompleteTimer = new Timer();
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -198,6 +200,10 @@ public final class SystemInfo {
 
   public boolean getIsSystemComplete() {
     return this.isSystemComplete;
+  }
+
+  public Timer getIsSystemCompleteTimer() {
+    return this.isSystemCompleteTimer;
   }
 
   public Timer getPreferSelectTimer() {

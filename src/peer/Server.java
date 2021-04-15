@@ -45,6 +45,10 @@ public class Server extends Thread{
 				logging.writeLog("(server thread) Establishing Timer for OptSelect with interval: " + sysInfo.getOptUnChokingInr() + "(sec)");
 				OptSelect taskOptSelect = new OptSelect();
 				sysInfo.getOptSelectTimer().schedule(taskOptSelect, 0, sysInfo.getOptUnChokingInr()*1000);
+				
+				logging.writeLog("(server thread) Establishing Timer for IsSystemComplete with interval: " + 3 + "(sec)");
+				IsSystemComplete taskIsSystemComplete = new IsSystemComplete();
+				sysInfo.getOptSelectTimer().schedule(taskIsSystemComplete, 0, 3*1000);
 
 				int clientNum = 0;
 				while(true) {
@@ -77,6 +81,75 @@ public class Server extends Thread{
 		}
 		return;
 	}
+
+	public static class IsSystemComplete extends TimerTask {
+		public void run() {
+			logging.writeLog("IsSystemComplete - start checking system isComplete?");
+			try {
+				if(isAllNeighborFinish()) {
+					if(sysInfo.getHostPeer().getHasFile() || isDownloadComplete()) {
+						processClosingServer();
+					}
+				}
+			}
+			catch(IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "Server IsSystemComplete Timer IOException failed:" + trace);
+			}
+		}
+
+		private boolean isAllNeighborFinish() {
+			logging.writeLog("check if all neighbor isComplete?");
+			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
+				Peer check = n.getValue();
+				logging.writeLog(check.getId() + " peer status: " + check.getIsComplete());
+				if(check.getHasFile()) continue;
+				if(!check.getIsComplete()) {
+					return false;
+				}
+			}
+			logging.writeLog("all neighbor isComplete is True!!");
+			return true;
+		}
+
+		private boolean isDownloadComplete(){
+			if(fm != null && fm.isComplete()) return true;
+			return false;
+		}
+
+		/**
+		 * After receiving every neighbors complete msg
+		 * 1. check and close all handler
+		 * 2. close server listener
+		 * 3. close all timer
+		 * @throws IOException
+		 */
+		public void processClosingServer() throws IOException{
+			sysInfo.setIsSystemComplete();
+			sysInfo.getInterestMap().clear();
+			sysInfo.getChokingMap().clear();
+			sysInfo.getUnChokingMap().clear();
+			Tools.timeSleep(500);
+			logging.writeLog("All nodes are 'complete', close server listener");
+			sysInfo.getServerListener().close();
+			Tools.timeSleep(500);
+			logging.writeLog("All nodes are 'complete', close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
+			for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
+				try {
+					Socket handlerSock = sConn.getValue();
+					handlerSock.close();
+				}
+				catch(IOException e) {
+				}
+			}
+			Tools.timeSleep(500);
+			logging.writeLog("All nodes are 'complete', cancel OptSelectTimer");
+			sysInfo.getOptSelectTimer().cancel();
+			logging.writeLog("All nodes are 'complete', cancel PreferSelectTimer");
+			sysInfo.getPreferSelectTimer().cancel();
+			return;
+		}
+	}
 	/** 
 	 *  This class will set an interval timer to make the unchoking-choking decision.
 	*/
@@ -86,7 +159,6 @@ public class Server extends Thread{
     * - NumberOfPreferredNeighbors k
     */
 		private final static int preferN = sysInfo.getPreferN();
-		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
 		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 
@@ -105,17 +177,12 @@ public class Server extends Thread{
 		 * Construct select timer
 		 */
 		PreferSelect() {
-			this.serverConnMap = sysInfo.getServerConnMap();
 			this.actMsgMap = sysInfo.getActMsgMap();
 			this.serverOpStream = sysInfo.getServerOpStream();
 		}
 
 		public void run() {
 			try {
-				if(isAllNeighborFinish()) {
-					processClosingServer();
-					return;
-				}
 				selectNodes();
 				sendNewObtainList();
 			}
@@ -127,45 +194,6 @@ public class Server extends Thread{
 				String trace = Tools.getStackTrace(e);
 				logging.writeLog("severe", "Server PreferSelect Timer sending msg failed:" + trace);
 			}
-		}
-
-		/**
-		 * After receiving every neighbors complete msg
-		 * 1. check and close all handler
-		 * 2. close server listener
-		 * 3. close all timer
-		 * @throws IOException
-		 */
-		public void processClosingServer() throws IOException{
-			sysInfo.setIsSystemComplete();
-			Tools.timeSleep(250);
-			logging.writeLog("All nodes are 'complete', close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
-			for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
-				Socket handlerSock = sConn.getValue();
-				handlerSock.close();
-			}
-			Tools.timeSleep(500);
-			logging.writeLog("All nodes are 'complete', close server listener");
-			sysInfo.getServerListener().close();
-			Tools.timeSleep(500);
-			logging.writeLog("All nodes are 'complete', cancel OptSelectTimer");
-			sysInfo.getOptSelectTimer().cancel();
-			logging.writeLog("All nodes are 'complete', cancel PreferSelectTimer");
-			sysInfo.getPreferSelectTimer().cancel();
-		}
-
-		private boolean isAllNeighborFinish() {
-			logging.writeLog("check if all neighbor isComplete or not");
-			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
-				Peer check = n.getValue();
-				logging.writeLog(check.getId() + "peer status: " + check.getIsComplete());
-				if(check.getHasFile()) continue;
-				if(!check.getIsComplete()) {
-					return false;
-				}
-			}
-			logging.writeLog("all neighbor isComplete !!");
-			return true;
 		}
 
 		/**

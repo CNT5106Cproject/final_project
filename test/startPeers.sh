@@ -9,6 +9,7 @@ rm ../demo/1007/thefile
 rm ../demo/1008/thefile
 rm ../demo/1009/thefile
 
+rm ../demo/log/*
 java -Duser.language=en -cp ../demo/ PeerProcess 1001 &
 java -Duser.language=en -cp ../demo/ PeerProcess 1002 &
 java -Duser.language=en -cp ../demo/ PeerProcess 1003 &
