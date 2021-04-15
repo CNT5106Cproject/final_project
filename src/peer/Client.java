@@ -20,7 +20,7 @@ public class Client extends Peer implements Runnable {
 	private HandShake handShake;
 	private ActualMsg actMsg;
 	private ObjectOutputStream opStream = null;
-	private InputStream inConn = null;
+	private ObjectInputStream inStream = null;
 	
 	/**
 	 * Use to count download rate
@@ -53,7 +53,7 @@ public class Client extends Peer implements Runnable {
 						
 						opStream = new ObjectOutputStream(requestSocket.getOutputStream());
 						sysInfo.getClientOpStream().put(targetHostPeer.getId(), opStream);
-						inConn = requestSocket.getInputStream();
+						inStream = new ObjectInputStream(requestSocket.getInputStream());
 						
 						logging.logStartConn(clientPeer, targetHostPeer);
 					}
@@ -76,7 +76,7 @@ public class Client extends Peer implements Runnable {
 							this.handShake.SendHandShake(this.opStream);
 							
 							logging.logSendHandShakeMsg(this.targetHostPeer.getId(), "client");
-							this.handShake.ReceiveHandShake(inConn);
+							this.handShake.ReceiveHandShake(inStream);
 							
 							if(this.handShake.isSuccess()) {
 								logging.logHandShakeSuccess(this.clientPeer, this.targetHostPeer);
@@ -96,7 +96,7 @@ public class Client extends Peer implements Runnable {
 					while(true){
 						// Receive msg from server
 						startReadTime = System.nanoTime();
-						msg_type = actMsg.recv(inConn);
+						msg_type = actMsg.recv(inStream);
 						if(msg_type != -1) {
 							boolean isComplete = reactions(msg_type);
 							if(isComplete) {
@@ -183,8 +183,8 @@ public class Client extends Peer implements Runnable {
 			if(this.opStream != null) {
 				this.opStream.close();
 			}
-			if(this.inConn != null) {
-				this.inConn.close();
+			if(this.inStream != null) {
+				this.inStream.close();
 			}
 		}
 		catch (IOException e) {
@@ -200,7 +200,6 @@ public class Client extends Peer implements Runnable {
 	}
 
 	private synchronized void processClosingClient() throws IOException{
-		logging.logCompleteFile();
 		this.clientPeer.setIsComplete();
 		logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
 		// send complete message to all server
@@ -319,7 +318,8 @@ public class Client extends Peer implements Runnable {
 
 			sysInfo.addNewObtainBlocks(blockIdx);
 			
-			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
+			if(isClientComplete()) {
+				logging.logCompleteFile();
 				processClosingClient();
 				return true;
 			}

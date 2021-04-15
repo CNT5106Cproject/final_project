@@ -127,8 +127,7 @@ public class ActualMsg{
 	 *
 	 * @throws     IOException  
 	 */
-	public byte recv(InputStream in) throws IOException{
-		ObjectInputStream ipStream = new ObjectInputStream(in);
+	public byte recv(ObjectInputStream ipStream) throws IOException{
 		try{
 			NoPayloadMsg msg = (NoPayloadMsg)ipStream.readObject();
 			byte type = msg.getMsgType();

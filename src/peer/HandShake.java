@@ -88,9 +88,8 @@ public class HandShake implements Serializable {
 		opStream.flush();
 	}
 
-	public String ReceiveHandShake(InputStream in) throws IOException, CustomExceptions{
+	public String ReceiveHandShake(ObjectInputStream ipStream) throws IOException, CustomExceptions{
 		try {
-			ObjectInputStream ipStream = new ObjectInputStream(in);
 			HandShake Response = (HandShake) ipStream.readObject();
 			logging.logReceiveHandShakeMsg(Response.peerID);
 			checkHeader(Response.peerMsgHeader, Response.peerID);

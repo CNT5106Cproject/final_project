@@ -158,8 +158,11 @@ public class Server extends Thread{
 			logging.writeLog("check if all neighbor isComplete or not");
 			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
 				Peer check = n.getValue();
+				logging.writeLog(check.getId() + "peer status: " + check.getIsComplete());
 				if(check.getHasFile()) continue;
-				if(!check.getIsComplete()) return false;
+				if(!check.getIsComplete()) {
+					return false;
+				}
 			}
 			logging.writeLog("all neighbor isComplete !!");
 			return true;
@@ -441,7 +444,7 @@ public class Server extends Thread{
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
 		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 		private ObjectOutputStream opStream = null;
-		private InputStream inConn = null;
+		private ObjectInputStream inStream = null;
 
     public Handler(
 			Socket connection, 
@@ -468,14 +471,14 @@ public class Server extends Thread{
 			 */
  			try {
 				opStream = new ObjectOutputStream(connection.getOutputStream());
-				inConn = connection.getInputStream();
+				inStream = new ObjectInputStream(connection.getInputStream());
 
 				if(this.handShake == null) {	
 					this.handShake = new HandShake();
 					String getClientId = null;
 					while(true) {
 						// waiting for hand shake message
-						getClientId = this.handShake.ReceiveHandShake(inConn);
+						getClientId = this.handShake.ReceiveHandShake(inStream);
 						if(this.handShake.isSuccess() && getClientId != null) {
 							this.client = new Peer(getClientId);
 							// set clientID
@@ -519,7 +522,7 @@ public class Server extends Thread{
 				
 				byte msg_type = -1;
 				while(true) {
-					msg_type = actMsg.recv(inConn);
+					msg_type = actMsg.recv(inStream);
 					if(msg_type != -1) {
 						boolean isComplete = reactions(msg_type);
 						if(isComplete) {
@@ -560,7 +563,7 @@ public class Server extends Thread{
 							this.actMsgMap.remove(this.client.getId());
 						}
 					}
-					this.inConn.close();
+					this.inStream.close();
 					this.opStream.close();
 					this.connection.close();
 				}
