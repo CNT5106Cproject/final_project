@@ -88,6 +88,7 @@ public class Server extends Thread{
 		private final static int preferN = sysInfo.getPreferN();
 		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 
 		/**
 		 * Select k neighbors from the interesting list
@@ -106,6 +107,7 @@ public class Server extends Thread{
 		PreferSelect() {
 			this.serverConnMap = sysInfo.getServerConnMap();
 			this.actMsgMap = sysInfo.getActMsgMap();
+			this.serverOpStream = sysInfo.getServerOpStream();
 		}
 
 		public void run() {
@@ -225,11 +227,10 @@ public class Server extends Thread{
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerId: " + key);
 						}
-						if(serverConnMap.get(key) == null) {
-							throw new CustomExceptions(ErrorCode.missServerConn, "miss peerId: " + key);
+						if(serverOpStream.get(key) == null) {
+							throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerId: " + key);
 						}
-						OutputStream outConn = serverConnMap.get(key).getOutputStream();
-						actMsgMap.get(key).send(outConn, ActualMsg.CHOKE, 0);
+						actMsgMap.get(key).send(serverOpStream.get(key), ActualMsg.CHOKE, 0);
 						unChokingMap.remove(key);
 					}
 					// b+d  put key in chokeMap
@@ -243,11 +244,10 @@ public class Server extends Thread{
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerId: " + key);
 						}
-						if(serverConnMap.get(key) == null) {
-							throw new CustomExceptions(ErrorCode.missServerConn, "miss peerId: " + key);
+						if(serverOpStream.get(key) == null) {
+							throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerId: " + key);
 						}
-						OutputStream outConn = serverConnMap.get(key).getOutputStream();
-						actMsgMap.get(key).send(outConn, ActualMsg.UNCHOKE, 0);
+						actMsgMap.get(key).send(serverOpStream.get(key), ActualMsg.UNCHOKE, 0);
 						chokingMap.remove(key);
 					}
 					// b+d  put key in unchokeMap
@@ -274,9 +274,8 @@ public class Server extends Thread{
 					if(n.getValue().getHasFile()) continue;
 					if(n.getValue().getIsComplete()) continue;
 					if(actMsgMap.get(key) != null) { 
-						OutputStream outConn = serverConnMap.get(key).getOutputStream();
 						for(Integer blockIdx: obtainBlocks) {
-							actMsgMap.get(key).send(outConn, ActualMsg.HAVE, blockIdx);
+							actMsgMap.get(key).send(serverOpStream.get(key), ActualMsg.HAVE, blockIdx);
 						}
 					}
 					else {
@@ -334,7 +333,7 @@ public class Server extends Thread{
 	private static class OptSelect extends TimerTask {
 		
 		Random R = new Random();
-		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
+		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
 		private HashMap<String, Peer> neighborMap = sysInfo.getNeighborMap(); 
 		private HashMap<String, Peer> unChokingMap = sysInfo.getUnChokingMap();
@@ -346,7 +345,7 @@ public class Server extends Thread{
 		* - 1 optimistically unchoked neighbor
     */
 		OptSelect() {
-			this.serverConnMap = sysInfo.getServerConnMap();
+			this.serverOpStream = sysInfo.getServerOpStream();
 			this.actMsgMap = sysInfo.getActMsgMap();
 		}
 
@@ -403,11 +402,10 @@ public class Server extends Thread{
 				if(actMsgMap.get(previousPeer.getId()) == null) { 
 					throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerID: " + previousPeer.getId());
 				}
-				if(serverConnMap.get(previousPeer.getId()) == null) {
-					throw new CustomExceptions(ErrorCode.missServerConn, "miss peerID: " + previousPeer.getId());
+				if(serverOpStream.get(previousPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerID: " + previousPeer.getId());
 				}
-				OutputStream outConn = serverConnMap.get(previousPeer.getId()).getOutputStream();
-				actMsgMap.get(previousPeer.getId()).send(outConn, ActualMsg.CHOKE, 0);
+				actMsgMap.get(previousPeer.getId()).send(serverOpStream.get(previousPeer.getId()), ActualMsg.CHOKE, 0);
 				unChokingMap.remove(previousPeer.getId());
 				chokingMap.put(previousPeer.getId(), previousPeer);
 			}
@@ -416,11 +414,10 @@ public class Server extends Thread{
 				if(actMsgMap.get(newPeer.getId()) == null) { 
 					throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerID: " + newPeer.getId());
 				}
-				if(serverConnMap.get(newPeer.getId()) == null) {
-					throw new CustomExceptions(ErrorCode.missServerConn, "miss peerID: " + newPeer.getId());
+				if(serverOpStream.get(newPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerID: " + newPeer.getId());
 				}
-				OutputStream outConn = serverConnMap.get(newPeer.getId()).getOutputStream();
-				actMsgMap.get(newPeer.getId()).send(outConn, ActualMsg.UNCHOKE, 0);
+				actMsgMap.get(previousPeer.getId()).send(serverOpStream.get(previousPeer.getId()), ActualMsg.UNCHOKE, 0);
 				chokingMap.remove(newPeer.getId());
 				unChokingMap.put(newPeer.getId(), newPeer);
 			}
@@ -442,6 +439,9 @@ public class Server extends Thread{
 		private ActualMsg actMsg;
 		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
+		private ObjectOutputStream opStream = null;
+		private InputStream inConn = null;
 
     public Handler(
 			Socket connection, 
@@ -456,6 +456,7 @@ public class Server extends Thread{
 			this.connection = connection;
 			this.serverConnMap = sysInfo.getServerConnMap();
 			this.actMsgMap = sysInfo.getActMsgMap();
+			this.serverOpStream = sysInfo.getServerOpStream();
     }
 
     public void run() {
@@ -466,10 +467,10 @@ public class Server extends Thread{
 			 * 3. Build InterestingList by interest messages
 			 */
  			try {
-				OutputStream outConn = connection.getOutputStream();
-				InputStream inConn = connection.getInputStream();
-				
-				if(this.handShake == null) {
+				opStream = new ObjectOutputStream(connection.getOutputStream());
+				inConn = connection.getInputStream();
+
+				if(this.handShake == null) {	
 					this.handShake = new HandShake();
 					String getClientId = null;
 					while(true) {
@@ -479,7 +480,7 @@ public class Server extends Thread{
 							this.client = new Peer(getClientId);
 							// set clientID
 							this.handShake.setTargetPeerID(getClientId);
-							this.handShake.SendHandShake(outConn);
+							this.handShake.SendHandShake(opStream);
 							logging.logSendHandShakeMsg(getClientId, "server");
 							logging.logHandShakeSuccess(this.server, this.client);
 							break;
@@ -496,9 +497,14 @@ public class Server extends Thread{
 				this.actMsg = new ActualMsg(this.client);
 				serverConnMap.put(this.client.getId(), this.connection);
 				actMsgMap.put(this.client.getId(), this.actMsg);
+				serverOpStream.put(this.client.getId(), opStream);
 
 				if(serverConnMap.get(this.client.getId()) == null) {
 					throw new CustomExceptions(ErrorCode.missServerConn, "missing connection object, recreate the socket");
+				}
+
+				if(serverOpStream.get(this.client.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerConn, "missing opStream, recreate the socket");
 				}
 
 				if(actMsgMap.get(this.client.getId()) == null) {
@@ -508,7 +514,7 @@ public class Server extends Thread{
 				/**
 				 * this.ownBitfield is set up at FileManager constructor
 				 */
-				this.actMsg.send(outConn, ActualMsg.BITFIELD, fm.getOwnBitfield());
+				this.actMsg.send(opStream, ActualMsg.BITFIELD, fm.getOwnBitfield());
 				logging.logSendBitFieldMsg(this.client);
 				
 				byte msg_type = -1;
@@ -544,8 +550,19 @@ public class Server extends Thread{
 						logging.writeLog(
 							"(Server handler thread) " + this.client.getId() + " connection closing, connection handler with client"
 						);
+						if(this.serverOpStream.get(this.client.getId()) != null) {
+							this.serverOpStream.remove(this.client.getId());
+						}
+						if(this.serverConnMap.get(this.client.getId()) != null) {
+							this.serverConnMap.remove(this.client.getId());
+						}
+						if(this.actMsgMap.get(this.client.getId()) != null) {
+							this.actMsgMap.remove(this.client.getId());
+						}
 					}
-					connection.close();
+					this.inConn.close();
+					this.opStream.close();
+					this.connection.close();
 				}
 				catch(IOException e){
 					String trace = Tools.getStackTrace(e);
@@ -582,7 +599,6 @@ public class Server extends Thread{
 					logging.writeLog(this.client.getId() + " is choked, unable to response to peace");
 					return false;
 				}
-				OutputStream outConn = this.connection.getOutputStream();
 				
 				int blockIdx = this.actMsg.shortMsg.getBlockIdx();
 				int blockLen = fm.getBlockSize(blockIdx);
@@ -590,7 +606,7 @@ public class Server extends Thread{
 				fm.read(blockIdx, data, blockLen);
 
 				this.actMsg.send(
-					outConn, 
+					opStream, 
 					ActualMsg.PIECE, 
 					blockIdx, 
 					data

@@ -20,7 +20,8 @@ public class ErrorCode {
   public static int missLogHandler = 4001;
   public static int missFileManager = 4002;
   public static int missServerConn = 4003;
-  public static int missActMsgObj = 4004;
+  public static int missServerOpStream = 4004;
+  public static int missActMsgObj = 4005;
 
   /**
   * System error

@@ -19,6 +19,8 @@ public class Client extends Peer implements Runnable {
 	private static FileManager fm = FileManager.getInstance();
 	private HandShake handShake;
 	private ActualMsg actMsg;
+	private ObjectOutputStream opStream = null;
+	private InputStream inConn = null;
 	
 	/**
 	 * Use to count download rate
@@ -48,6 +50,11 @@ public class Client extends Peer implements Runnable {
 					if (this.tryToConnect) {
 						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
 						sysInfo.getClientConnMap().put(targetHostPeer.getId(), requestSocket);
+						
+						opStream = new ObjectOutputStream(requestSocket.getOutputStream());
+						sysInfo.getClientOpStream().put(targetHostPeer.getId(), opStream);
+						inConn = requestSocket.getInputStream();
+						
 						logging.logStartConn(clientPeer, targetHostPeer);
 					}
 					/** 
@@ -55,8 +62,6 @@ public class Client extends Peer implements Runnable {
 					 * Initialize inputStream and outputStream
 					*/
 					this.tryToConnect = false;
-					OutputStream outConn = requestSocket.getOutputStream();
-					InputStream inConn = requestSocket.getInputStream();
 					
 					/**
 					 * this.handShake is null for not been handshake before
@@ -68,7 +73,7 @@ public class Client extends Peer implements Runnable {
 											
 						int retryHandShake = 0;
 						while(retryHandShake < sysInfo.getRetryLimit()) {
-							this.handShake.SendHandShake(outConn);
+							this.handShake.SendHandShake(this.opStream);
 							
 							logging.logSendHandShakeMsg(this.targetHostPeer.getId(), "client");
 							this.handShake.ReceiveHandShake(inConn);
@@ -93,7 +98,7 @@ public class Client extends Peer implements Runnable {
 						startReadTime = System.nanoTime();
 						msg_type = actMsg.recv(inConn);
 						if(msg_type != -1) {
-							boolean isComplete = reactions(msg_type, outConn);
+							boolean isComplete = reactions(msg_type);
 							if(isComplete) {
 								// jump to close connections with client
 								break;
@@ -147,6 +152,8 @@ public class Client extends Peer implements Runnable {
 					logging.writeLog(
 						"(Client thread) close client connection with client: " + targetHostPeer.getId()
 					);
+					removeCommunicateObjects();
+
 					requestSocket.close();
 				}
 				logging.writeLog(
@@ -154,7 +161,8 @@ public class Client extends Peer implements Runnable {
 				);
 			}
 			catch(IOException e){
-				logging.writeLog("severe", "Client close connection failed, ex:" + e);
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "Client close connection failed, ex:" + trace);
 			}
 		}
 	}
@@ -167,6 +175,28 @@ public class Client extends Peer implements Runnable {
 		Tools.timeSleep(sysInfo.getRetryInterval());
 		tryToConnect = true;
 		this.handShake = null;
+		removeCommunicateObjects();
+	}
+
+	private void removeCommunicateObjects() {
+		try {
+			if(this.opStream != null) {
+				this.opStream.close();
+			}
+			if(this.inConn != null) {
+				this.inConn.close();
+			}
+		}
+		catch (IOException e) {
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog("severe", "removeCommunicateObjects failed, ex:" + trace);
+		}
+		if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) != null) {
+			sysInfo.getClientOpStream().remove(targetHostPeer.getId());
+		}
+		if(sysInfo.getClientConnMap().get(targetHostPeer.getId()) != null) {
+			sysInfo.getClientConnMap().remove(targetHostPeer.getId());
+		}
 	}
 
 	private synchronized void processClosingClient() throws IOException{
@@ -183,7 +213,7 @@ public class Client extends Peer implements Runnable {
 	 * @return true -> isEnd
 	 * @throws IOException
 	 */
-	private boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
+	private boolean reactions(byte msg_type) throws IOException{
 
 		if(msg_type == ActualMsg.BITFIELD) {
 			logging.logReceiveBitFieldMsg(this.targetHostPeer);
@@ -202,10 +232,10 @@ public class Client extends Peer implements Runnable {
 
 			// send interest or not
 			if(fm.isInterested(this.targetHostPeer.getId())) {
-				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.INTERESTED, 0);
 			}
 			else {
-				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.NOTINTERESTED, 0);
 			}
 		}
 		else if(msg_type == ActualMsg.HAVE) {
@@ -228,10 +258,10 @@ public class Client extends Peer implements Runnable {
 			}
 
 			if(fm.isInterested(this.targetHostPeer.getId())) {
-				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.INTERESTED, 0);
 			}
 			else {
-				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.NOTINTERESTED, 0);
 			}
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
@@ -258,7 +288,7 @@ public class Client extends Peer implements Runnable {
 			if(clientPeer.getIsChoking()) {
 				clientPeer.setUnChoking();
 			}
-			requestingPiece(this.targetHostPeer, outConn);
+			requestingPiece(this.targetHostPeer);
 		}
 		else if(msg_type == ActualMsg.PIECE) {
 			/**
@@ -299,7 +329,7 @@ public class Client extends Peer implements Runnable {
 				return false;
 			}
 			Tools.timeSleep(200);
-			requestingPiece(this.targetHostPeer, outConn);
+			requestingPiece(this.targetHostPeer);
 		}
 		return false;
 	}
@@ -316,22 +346,21 @@ public class Client extends Peer implements Runnable {
 	 * @return
 	 * @throws IOException
 	 */
-	private int requestingPiece(Peer sender, OutputStream outConn) throws IOException {
+	private int requestingPiece(Peer sender) throws IOException {
 		int requestBlockIdx = fm.pickInterestedFileBlock(sender.getId());
 		if(requestBlockIdx == -1) {
 			logging.writeLog("requestingPiece stop, no interested block"); 
 			return -1;
 		} 
-		this.actMsg.send(outConn, ActualMsg.REQUEST, requestBlockIdx);
+		this.actMsg.send(opStream, ActualMsg.REQUEST, requestBlockIdx);
 		return 0;
 	}
 
 	private void sendCompleteMessageToAll() throws IOException {
-		logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientConnMap().size() + " servers");
-		for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
+		logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientOpStream().size() + " servers");
+		for(Entry<String, ObjectOutputStream> conn: sysInfo.getClientOpStream().entrySet()) {
 			logging.logSendCompleteMsg(conn.getKey());
-			OutputStream outConn = conn.getValue().getOutputStream();
-			this.actMsg.send(outConn, ActualMsg.COMPLETE, 0);
+			this.actMsg.send(conn.getValue(), ActualMsg.COMPLETE, 0);
 		}
 	}
 	

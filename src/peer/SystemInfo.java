@@ -56,9 +56,11 @@ public final class SystemInfo {
 
   // Multiple handlers will modify and get this object - use ConcurrentHashMap
   private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
+  private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 	private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
   // Multiple clients will modify and get this object - use ConcurrentHashMap
   private ConcurrentHashMap<String, Socket> clientConnMap = new ConcurrentHashMap<String, Socket>();
+  private ConcurrentHashMap<String, ObjectOutputStream> clientOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 
   private List<Integer> blockList  = new ArrayList<Integer>();
   private List<Integer> newObtainBlocks = Collections.synchronizedList(blockList);
@@ -254,12 +256,20 @@ public final class SystemInfo {
     return this.serverConnMap;
   }
 
+  public ConcurrentHashMap<String, ObjectOutputStream> getServerOpStream() {
+    return this.serverOpStream;
+  }
+
   public ConcurrentHashMap<String, ActualMsg> getActMsgMap() {
     return this.actMsgMap;
   }
 
   public ConcurrentHashMap<String, Socket> getClientConnMap() {
     return this.clientConnMap;
+  }
+
+  public ConcurrentHashMap<String, ObjectOutputStream> getClientOpStream() {
+    return this.clientOpStream;
   }
 
   /**

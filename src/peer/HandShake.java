@@ -81,8 +81,8 @@ public class HandShake implements Serializable {
 				.toString();
 	}
 
-	public void SendHandShake(OutputStream out) throws IOException {
-		ObjectOutputStream opStream = new ObjectOutputStream(out);
+	public void SendHandShake(ObjectOutputStream opStream) throws IOException {
+		//ObjectOutputStream opStream = new ObjectOutputStream(out);
 		opStream.reset();
 		opStream.writeObject(this);
 		opStream.flush();
