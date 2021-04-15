@@ -18,7 +18,7 @@ import utils.ErrorCode;
  * Create a singleton for System Parameters
  */
 public final class SystemInfo {
-  
+  private boolean isDebugMode = true;
   private final ReentrantLock lock = new ReentrantLock();
   private static SystemInfo singletonObj = null;
 
@@ -133,6 +133,10 @@ public final class SystemInfo {
     this.neighborMap = neighborMap;
   }
   
+  public void initDebugMode(boolean debug) {
+    this.isDebugMode = debug;
+  }
+
   public void initSystemParam(List<String> SystemInfoList) {
     try {
       this.preferN = Integer.parseInt(SystemInfoList.get(0));
@@ -173,6 +177,10 @@ public final class SystemInfo {
    */
   public void setOptUnchokingPeer(Peer selected) {
     this.optUnchokingPeer = selected;
+  }
+
+  public boolean getIsDebugMode() {
+    return this.isDebugMode;
   }
 
   /**

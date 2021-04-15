@@ -11,11 +11,12 @@ import utils.LogHandler;
 import peer.*;
 
 public class PeerProcess {
+	public static boolean debug = true;
 	private static String peerInfoFN = "PeerInfo.cfg";
 	private static String debugPeerInfoFN = "PeerInfo_debug.cfg";
   private static String SystemInfoFN = "Common.cfg";
 	private static String debugSystemInfoFN = "Common_debug.cfg";
-	private static String cfgDir = "./project/";
+	private static String cfgDir = System.getProperty("user.dir") + "/";
 
 	/**
 	 * Read Peer Info config
@@ -33,6 +34,7 @@ public class PeerProcess {
 			 * Use the testing config 
 			 */
 			fileName = debugPeerInfoFN;
+			cfgDir = "../demo/";
 		}
 
 		try {
@@ -100,7 +102,6 @@ public class PeerProcess {
 	 * Main Process of the Peer
 	 */
 	public static void main(String[] args) {
-		boolean debug = true;
 		try {
 			/* Must have at least peer ID */
 			if (args.length < 1) {
@@ -112,6 +113,7 @@ public class PeerProcess {
 
 			/** Get peer's system parameter */
 			SystemInfo sysInfo = SystemInfo.getSingletonObj();
+			sysInfo.initDebugMode(debug);
 			
 			/** Set up peer's logger */
 			LogHandler logging = new LogHandler();

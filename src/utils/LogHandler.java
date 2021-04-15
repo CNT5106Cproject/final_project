@@ -8,10 +8,7 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 
-import javax.sound.midi.Receiver;
-
 import java.util.Date;
-import java.util.Map.Entry;
 import java.util.logging.FileHandler;
 import java.util.logging.Filter;
 import java.text.SimpleDateFormat;
@@ -23,7 +20,7 @@ public final class LogHandler {
 
   private FileHandler logFH = null; // Project descriptions log - info level
   private FileHandler debugLogFH = null; // Debug logs
-  private String logDir = "./log";
+  private String logDir = System.getProperty("user.dir") + "/log";
 
   private static Logger logger = null;
   private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
@@ -85,6 +82,9 @@ public final class LogHandler {
      * Create logs, and adding log handlers
     */
     if(logger == null) {
+      if(sysInfo.getIsDebugMode()) {
+        this.logDir = "../demo/";
+      }
       logger = Logger.getLogger(LogHandler.class.getName());
       logger.setLevel(Level.FINE);
       createLogFiles();
@@ -285,7 +285,7 @@ public final class LogHandler {
   }
 
   public void logSendCompleteMsg(String recvId) {
-    String msg = String.format("Peer [%s] (server) sending 'complete' message to [%s]", sysInfo.getHostPeer().getId(), recvId);
+    String msg = String.format("Peer [%s] (client) sending 'complete' message to [%s]", sysInfo.getHostPeer().getId(), recvId);
     logger.fine(msg);
   }
 
