@@ -83,7 +83,7 @@ public final class LogHandler {
     */
     if(logger == null) {
       if(sysInfo.getIsDebugMode()) {
-        this.logDir = "../demo/";
+        this.logDir = "../demo/log/";
       }
       logger = Logger.getLogger(LogHandler.class.getName());
       logger.setLevel(Level.FINE);
@@ -291,6 +291,11 @@ public final class LogHandler {
 
   public void logReceiveCompleteMsg(Peer sender) {
     String msg = String.format("Peer [%s] (server) received the 'complete' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logReceiveBackCompleteMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (client) received the 'complete' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
