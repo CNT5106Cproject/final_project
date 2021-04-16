@@ -45,6 +45,10 @@ public class Server extends Thread{
 				logging.writeLog("(server thread) Establishing Timer for OptSelect with interval: " + sysInfo.getOptUnChokingInr() + "(sec)");
 				OptSelect taskOptSelect = new OptSelect();
 				sysInfo.getOptSelectTimer().schedule(taskOptSelect, 0, sysInfo.getOptUnChokingInr()*1000);
+				
+				logging.writeLog("(server thread) Establishing Timer for IsSystemComplete with interval: " + 3 + "(sec)");
+				IsSystemComplete taskIsSystemComplete = new IsSystemComplete();
+				sysInfo.getIsSystemCompleteTimer().schedule(taskIsSystemComplete, 10, 3*1000);
 
 				int clientNum = 0;
 				while(true) {
@@ -67,8 +71,8 @@ public class Server extends Thread{
 			}
 		}
 		catch(IOException e) {
-			if(sysInfo.getIsSystemComplete()) {
-				logging.logSystemIsComplete();
+			if(sysInfo.getIsNeighborsComplete()) {
+				logging.writeLog("(server thread) ServerSocket, neighbors all completed, closing server thread");
 			}
 			else {
 				String trace = Tools.getStackTrace(e);
@@ -76,6 +80,98 @@ public class Server extends Thread{
 			}
 		}
 		return;
+	}
+
+	public static class IsSystemComplete extends TimerTask {
+		private int countDown = 10;
+		public void run() {
+			logging.writeLog("IsSystemComplete - start checking system isComplete?");
+			try {
+				if(isAllNeighborFinish() && !sysInfo.getIsNeighborsComplete()) {
+					sysInfo.setIsNeighborsComplete();
+				}
+
+				if(sysInfo.getIsNeighborsComplete()) {
+					if(sysInfo.getHostPeer().getHasFile() || isDownloadComplete()) {
+						countDown--;
+						// waiting time for the complete message reply.
+						logging.logSystemReadyShutDown(countDown);
+						if(countDown == 0) {
+							// about 30 sec later the server will shut down
+							closeAllServerConn();
+							Tools.timeSleep(250);
+							closeAllTimer();
+							logging.logSystemIsComplete();
+						}
+					}
+				}
+			}
+			catch(IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("Server IsSystemComplete Timer, closing server IOException failed:" + trace);
+			}
+		}
+
+		private boolean isAllNeighborFinish() {
+			logging.writeLog("check if all neighbor isComplete?");
+			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
+				Peer check = n.getValue();
+				if(check.getHasFile()) continue;
+				if(!check.getIsComplete()) {
+					logging.writeLog(check.getId() + " peer unComplete");
+					return false;
+				}
+			}
+			logging.writeLog("all neighbor isComplete is True!!");
+			return true;
+		}
+
+		private boolean isDownloadComplete(){
+			if(fm != null && fm.isComplete()) return true;
+			return false;
+		}
+
+		public void closeAllClientConn() throws IOException {
+			logging.writeLog("(server thread) close all client thread # " + sysInfo.getClientConnMap().size());
+			for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
+				try {
+					logging.writeLog("close client thread: " + conn.getKey());
+					conn.getValue().close();
+				}
+				catch(IOException e) {
+					String trace = Tools.getStackTrace(e);
+					logging.writeLog("close client thread, ex: " + trace);
+				}
+			}
+		}
+
+
+		public void closeAllServerConn() throws IOException {
+			logging.writeLog("All nodes are 'complete', set system is complete");
+			sysInfo.setIsNeighborsComplete();
+			sysInfo.getInterestMap().clear();
+			sysInfo.getChokingMap().clear();
+			sysInfo.getUnChokingMap().clear();
+			logging.writeLog("All nodes are 'complete', close server listener");
+			sysInfo.getServerListener().close();
+			logging.writeLog("All nodes are 'complete', close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
+			for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
+				try {
+					sConn.getValue().close();
+				}
+				catch(IOException e) {
+				}
+			}
+		}
+
+		public void closeAllTimer() {
+			logging.writeLog("All nodes are 'complete', cancel OptSelectTimer");
+			sysInfo.getOptSelectTimer().cancel();
+			logging.writeLog("All nodes are 'complete', cancel PreferSelectTimer");
+			sysInfo.getPreferSelectTimer().cancel();
+			logging.writeLog("All nodes are 'complete', cancel getIsSystemCompleteTimer");
+			sysInfo.getIsSystemCompleteTimer().cancel();
+		}
 	}
 	/** 
 	 *  This class will set an interval timer to make the unchoking-choking decision.
@@ -88,6 +184,7 @@ public class Server extends Thread{
 		private final static int preferN = sysInfo.getPreferN();
 		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 
 		/**
 		 * Select k neighbors from the interesting list
@@ -105,62 +202,23 @@ public class Server extends Thread{
 		 */
 		PreferSelect() {
 			this.serverConnMap = sysInfo.getServerConnMap();
-			this.actMsgMap = sysInfo.getActMsgMap();
+			this.actMsgMap = sysInfo.getServerActMsgMap();
+			this.serverOpStream = sysInfo.getServerOpStream();
 		}
 
 		public void run() {
 			try {
-				if(isAllNeighborFinish()) {
-					processClosingServer();
-					return;
-				}
 				selectNodes();
 				sendNewObtainList();
 			}
 			catch(CustomExceptions e) {
 				String trace = Tools.getStackTrace(e);
-				logging.writeLog("severe", trace);
+				logging.writeLog(trace);
 			}
 			catch(IOException e) {
 				String trace = Tools.getStackTrace(e);
 				logging.writeLog("severe", "Server PreferSelect Timer sending msg failed:" + trace);
 			}
-		}
-
-		/**
-		 * After receiving every neighbors complete msg
-		 * 1. check and close all handler
-		 * 2. close server listener
-		 * 3. close all timer
-		 * @throws IOException
-		 */
-		public void processClosingServer() throws IOException{
-			sysInfo.setIsSystemComplete();
-			Tools.timeSleep(250);
-			logging.writeLog("All nodes are 'complete', close all server handlers, # server handlers left " + sysInfo.getServerConnMap().size());
-			for(Entry<String, Socket> sConn: sysInfo.getServerConnMap().entrySet()) {
-				Socket handlerSock = sConn.getValue();
-				handlerSock.close();
-			}
-			Tools.timeSleep(500);
-			logging.writeLog("All nodes are 'complete', close server listener");
-			sysInfo.getServerListener().close();
-			Tools.timeSleep(500);
-			logging.writeLog("All nodes are 'complete', cancel OptSelectTimer");
-			sysInfo.getOptSelectTimer().cancel();
-			logging.writeLog("All nodes are 'complete', cancel PreferSelectTimer");
-			sysInfo.getPreferSelectTimer().cancel();
-		}
-
-		private boolean isAllNeighborFinish() {
-			logging.writeLog("check if all neighbor isComplete or not");
-			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
-				Peer check = n.getValue();
-				if(check.getHasFile()) continue;
-				if(!check.getIsComplete()) return false;
-			}
-			logging.writeLog("all neighbor isComplete !!");
-			return true;
 		}
 
 		/**
@@ -182,6 +240,7 @@ public class Server extends Thread{
 			for(Entry<String, Peer> n: neighborMap.entrySet()) {
 				if(n.getValue().getHasFile()) continue;
 				if(n.getValue().getIsComplete()) continue;
+				if(sysInfo.getServerConnMap().get(n.getKey()) == null || !sysInfo.getServerConnMap().get(n.getKey()).isConnected()) continue;
 				if(n.getValue().getIsInterested()) {
 					interestMap.put(n.getKey(), n.getValue());
 				}
@@ -225,11 +284,10 @@ public class Server extends Thread{
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerId: " + key);
 						}
-						if(serverConnMap.get(key) == null) {
-							throw new CustomExceptions(ErrorCode.missServerConn, "miss peerId: " + key);
+						if(serverOpStream.get(key) == null) {
+							throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerId: " + key);
 						}
-						OutputStream outConn = serverConnMap.get(key).getOutputStream();
-						actMsgMap.get(key).send(outConn, ActualMsg.CHOKE, 0);
+						actMsgMap.get(key).send(serverOpStream.get(key), ActualMsg.CHOKE, 0);
 						unChokingMap.remove(key);
 					}
 					// b+d  put key in chokeMap
@@ -243,11 +301,10 @@ public class Server extends Thread{
 						if(actMsgMap.get(key) == null) { 
 							throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerId: " + key);
 						}
-						if(serverConnMap.get(key) == null) {
-							throw new CustomExceptions(ErrorCode.missServerConn, "miss peerId: " + key);
+						if(serverOpStream.get(key) == null) {
+							throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerId: " + key);
 						}
-						OutputStream outConn = serverConnMap.get(key).getOutputStream();
-						actMsgMap.get(key).send(outConn, ActualMsg.UNCHOKE, 0);
+						actMsgMap.get(key).send(serverOpStream.get(key), ActualMsg.UNCHOKE, 0);
 						chokingMap.remove(key);
 					}
 					// b+d  put key in unchokeMap
@@ -274,9 +331,8 @@ public class Server extends Thread{
 					if(n.getValue().getHasFile()) continue;
 					if(n.getValue().getIsComplete()) continue;
 					if(actMsgMap.get(key) != null) { 
-						OutputStream outConn = serverConnMap.get(key).getOutputStream();
 						for(Integer blockIdx: obtainBlocks) {
-							actMsgMap.get(key).send(outConn, ActualMsg.HAVE, blockIdx);
+							actMsgMap.get(key).send(serverOpStream.get(key), ActualMsg.HAVE, blockIdx);
 						}
 					}
 					else {
@@ -334,7 +390,7 @@ public class Server extends Thread{
 	private static class OptSelect extends TimerTask {
 		
 		Random R = new Random();
-		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
+		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
 		private HashMap<String, Peer> neighborMap = sysInfo.getNeighborMap(); 
 		private HashMap<String, Peer> unChokingMap = sysInfo.getUnChokingMap();
@@ -346,8 +402,8 @@ public class Server extends Thread{
 		* - 1 optimistically unchoked neighbor
     */
 		OptSelect() {
-			this.serverConnMap = sysInfo.getServerConnMap();
-			this.actMsgMap = sysInfo.getActMsgMap();
+			this.serverOpStream = sysInfo.getServerOpStream();
+			this.actMsgMap = sysInfo.getServerActMsgMap();
 		}
 
 		public void run() {
@@ -403,11 +459,10 @@ public class Server extends Thread{
 				if(actMsgMap.get(previousPeer.getId()) == null) { 
 					throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerID: " + previousPeer.getId());
 				}
-				if(serverConnMap.get(previousPeer.getId()) == null) {
-					throw new CustomExceptions(ErrorCode.missServerConn, "miss peerID: " + previousPeer.getId());
+				if(serverOpStream.get(previousPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerID: " + previousPeer.getId());
 				}
-				OutputStream outConn = serverConnMap.get(previousPeer.getId()).getOutputStream();
-				actMsgMap.get(previousPeer.getId()).send(outConn, ActualMsg.CHOKE, 0);
+				actMsgMap.get(previousPeer.getId()).send(serverOpStream.get(previousPeer.getId()), ActualMsg.CHOKE, 0);
 				unChokingMap.remove(previousPeer.getId());
 				chokingMap.put(previousPeer.getId(), previousPeer);
 			}
@@ -416,11 +471,10 @@ public class Server extends Thread{
 				if(actMsgMap.get(newPeer.getId()) == null) { 
 					throw new CustomExceptions(ErrorCode.missActMsgObj, "miss peerID: " + newPeer.getId());
 				}
-				if(serverConnMap.get(newPeer.getId()) == null) {
-					throw new CustomExceptions(ErrorCode.missServerConn, "miss peerID: " + newPeer.getId());
+				if(serverOpStream.get(newPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerOpStream, "miss peerID: " + newPeer.getId());
 				}
-				OutputStream outConn = serverConnMap.get(newPeer.getId()).getOutputStream();
-				actMsgMap.get(newPeer.getId()).send(outConn, ActualMsg.UNCHOKE, 0);
+				actMsgMap.get(previousPeer.getId()).send(serverOpStream.get(previousPeer.getId()), ActualMsg.UNCHOKE, 0);
 				chokingMap.remove(newPeer.getId());
 				unChokingMap.put(newPeer.getId(), newPeer);
 			}
@@ -442,6 +496,9 @@ public class Server extends Thread{
 		private ActualMsg actMsg;
 		private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
 		private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+		private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
+		private ObjectOutputStream opStream = null;
+		private ObjectInputStream inStream = null;
 
     public Handler(
 			Socket connection, 
@@ -455,7 +512,8 @@ public class Server extends Thread{
 			this.actMsg = null;
 			this.connection = connection;
 			this.serverConnMap = sysInfo.getServerConnMap();
-			this.actMsgMap = sysInfo.getActMsgMap();
+			this.actMsgMap = sysInfo.getServerActMsgMap();
+			this.serverOpStream = sysInfo.getServerOpStream();
     }
 
     public void run() {
@@ -466,20 +524,20 @@ public class Server extends Thread{
 			 * 3. Build InterestingList by interest messages
 			 */
  			try {
-				OutputStream outConn = connection.getOutputStream();
-				InputStream inConn = connection.getInputStream();
-				
-				if(this.handShake == null) {
+				opStream = new ObjectOutputStream(connection.getOutputStream());
+				inStream = new ObjectInputStream(connection.getInputStream());
+
+				if(this.handShake == null) {	
 					this.handShake = new HandShake();
 					String getClientId = null;
 					while(true) {
 						// waiting for hand shake message
-						getClientId = this.handShake.ReceiveHandShake(inConn);
+						getClientId = this.handShake.ReceiveHandShake(inStream);
 						if(this.handShake.isSuccess() && getClientId != null) {
 							this.client = new Peer(getClientId);
 							// set clientID
 							this.handShake.setTargetPeerID(getClientId);
-							this.handShake.SendHandShake(outConn);
+							this.handShake.SendHandShake(opStream);
 							logging.logSendHandShakeMsg(getClientId, "server");
 							logging.logHandShakeSuccess(this.server, this.client);
 							break;
@@ -496,24 +554,31 @@ public class Server extends Thread{
 				this.actMsg = new ActualMsg(this.client);
 				serverConnMap.put(this.client.getId(), this.connection);
 				actMsgMap.put(this.client.getId(), this.actMsg);
+				serverOpStream.put(this.client.getId(), opStream);
+				this.client.setUnComplete();
+				sysInfo.getNeighborMap().put(this.client.getId(), this.client);
 
 				if(serverConnMap.get(this.client.getId()) == null) {
 					throw new CustomExceptions(ErrorCode.missServerConn, "missing connection object, recreate the socket");
 				}
 
+				if(serverOpStream.get(this.client.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missServerOpStream, "missing opStream, recreate the socket");
+				}
+
 				if(actMsgMap.get(this.client.getId()) == null) {
-					actMsgMap.put(this.client.getId(), this.actMsg);
+					throw new CustomExceptions(ErrorCode.missActMsgObj, "missing actMsgMap, recreate the socket");
 				}
 
 				/**
 				 * this.ownBitfield is set up at FileManager constructor
 				 */
-				this.actMsg.send(outConn, ActualMsg.BITFIELD, fm.getOwnBitfield());
+				this.actMsg.send(opStream, ActualMsg.BITFIELD, fm.getOwnBitfield());
 				logging.logSendBitFieldMsg(this.client);
 				
 				byte msg_type = -1;
 				while(true) {
-					msg_type = actMsg.recv(inConn);
+					msg_type = actMsg.recv(inStream);
 					if(msg_type != -1) {
 						boolean isComplete = reactions(msg_type);
 						if(isComplete) {
@@ -528,14 +593,22 @@ public class Server extends Thread{
 				String peerId = this.client != null ? this.client.getId() : "";
 				logging.writeLog("severe", "(Server handler thread) CustomExceptions with client: " + peerId + ", ex:" + trace);
 			}
+			catch(EOFException e) {
+				String peerId = this.client != null ? this.client.getId() : "";
+				logging.writeLog("(Server handler thread) client closed the connection, peerId:" + peerId);
+				if(this.client != null) {
+					logging.writeLog("(server handler thread) EOFException, " + this.client.getId() + " isComplete");
+					this.client.setIsComplete();
+					sysInfo.getNeighborMap().put(this.client.getId(), this.client);
+					removePeerFromMap();
+				}
+			}
 			catch(IOException e){
 				String peerId = this.client != null ? this.client.getId() : "";
-				if(sysInfo.getIsSystemComplete()) {
-					logging.writeLog("(Server handler thread) system is complete, close handler with " + peerId);
-				}
-				else {
-					String trace = Tools.getStackTrace(e);
-					logging.writeLog("severe", "(Server handler thread) IOException with client " + peerId + ", ex:" + trace);
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("severe", "(Server handler thread) IOException with client " + peerId + ", ex:" + trace);
+				if(this.client != null) {
+					removePeerFromMap();
 				}
 			}
 			finally {
@@ -544,8 +617,11 @@ public class Server extends Thread{
 						logging.writeLog(
 							"(Server handler thread) " + this.client.getId() + " connection closing, connection handler with client"
 						);
+						removePeerFromMap();
 					}
-					connection.close();
+					this.inStream.close();
+					this.opStream.close();
+					this.connection.close();
 				}
 				catch(IOException e){
 					String trace = Tools.getStackTrace(e);
@@ -582,7 +658,6 @@ public class Server extends Thread{
 					logging.writeLog(this.client.getId() + " is choked, unable to response to peace");
 					return false;
 				}
-				OutputStream outConn = this.connection.getOutputStream();
 				
 				int blockIdx = this.actMsg.shortMsg.getBlockIdx();
 				int blockLen = fm.getBlockSize(blockIdx);
@@ -590,7 +665,7 @@ public class Server extends Thread{
 				fm.read(blockIdx, data, blockLen);
 
 				this.actMsg.send(
-					outConn, 
+					opStream, 
 					ActualMsg.PIECE, 
 					blockIdx, 
 					data
@@ -599,17 +674,17 @@ public class Server extends Thread{
 			else if(msg_type == ActualMsg.COMPLETE) {
 				logging.logReceiveCompleteMsg(this.client);
 				/**
-				 * 1. remove client from all map
-				 * 2. remove object from connection & actMsg map 
+				 * 1. Notify client is complete
+				 * 2. Send back response complete
 				 */
 				logging.writeLog("(server handler) notify that peer " + this.client.getId() + " isComplete");
+				this.actMsg.send(
+					opStream, 
+					ActualMsg.COMPLETE, 
+					0
+				);
 				this.client.setIsComplete();
 				sysInfo.getNeighborMap().put(this.client.getId(), this.client);
-				
-				removePeerFromMap();
-				// remove connection and
-				serverConnMap.remove(this.client.getId());
-				actMsgMap.remove(this.client.getId());
 				return true;
 			}
 			return false;
@@ -629,8 +704,9 @@ public class Server extends Thread{
 			logging.writeLog(
 				"check neighbor " + this.client.getId() + ", isInterested status: " + check.getIsInterested());
 		}
-
+		
 		private void removePeerFromMap() {
+			setNeighborIntStatus(this.client.getId(), false);
 			if(sysInfo.getInterestMap().get(this.client.getId()) != null) {
 				sysInfo.getInterestMap().remove(this.client.getId());
 			}
@@ -639,6 +715,27 @@ public class Server extends Thread{
 			}
 			if(sysInfo.getUnChokingMap().get(this.client.getId()) != null) {
 				sysInfo.getUnChokingMap().remove(this.client.getId());
+			}
+			if(sysInfo.getServerActMsgMap().get(this.client.getId()) != null) {
+				sysInfo.getServerActMsgMap().remove(this.client.getId());
+			}
+			if(sysInfo.getServerOpStream().get(this.client.getId()) != null) {
+				try {
+					sysInfo.getServerOpStream().get(this.client.getId()).close();
+				}
+				catch(IOException e) {
+
+				}
+				sysInfo.getServerOpStream().remove(this.client.getId());
+			}
+			if(sysInfo.getServerConnMap().get(this.client.getId()) != null) {
+				try {
+					sysInfo.getServerConnMap().get(this.client.getId()).close();
+				}
+				catch(IOException e) {
+					
+				}
+				sysInfo.getServerConnMap().remove(this.client.getId());
 			}
 		}
   }

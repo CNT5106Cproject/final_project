@@ -81,16 +81,15 @@ public class HandShake implements Serializable {
 				.toString();
 	}
 
-	public void SendHandShake(OutputStream out) throws IOException {
-		ObjectOutputStream opStream = new ObjectOutputStream(out);
+	public void SendHandShake(ObjectOutputStream opStream) throws IOException {
+		//ObjectOutputStream opStream = new ObjectOutputStream(out);
 		opStream.reset();
 		opStream.writeObject(this);
 		opStream.flush();
 	}
 
-	public String ReceiveHandShake(InputStream in) throws IOException, CustomExceptions{
+	public String ReceiveHandShake(ObjectInputStream ipStream) throws IOException, CustomExceptions{
 		try {
-			ObjectInputStream ipStream = new ObjectInputStream(in);
 			HandShake Response = (HandShake) ipStream.readObject();
 			logging.logReceiveHandShakeMsg(Response.peerID);
 			checkHeader(Response.peerMsgHeader, Response.peerID);

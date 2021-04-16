@@ -8,10 +8,7 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 
-import javax.sound.midi.Receiver;
-
 import java.util.Date;
-import java.util.Map.Entry;
 import java.util.logging.FileHandler;
 import java.util.logging.Filter;
 import java.text.SimpleDateFormat;
@@ -21,9 +18,10 @@ import peer.SystemInfo;
 
 public final class LogHandler {
 
+  private FileHandler erroLogFH = null;
   private FileHandler logFH = null; // Project descriptions log - info level
   private FileHandler debugLogFH = null; // Debug logs
-  private String logDir = "./log";
+  private String logDir = System.getProperty("user.dir") + "/log";
 
   private static Logger logger = null;
   private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
@@ -63,6 +61,7 @@ public final class LogHandler {
     * Set file name with date
     */
     String dateString = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+    String errorLogFN = String.format("error_log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
     String logFN = String.format("log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
     String debugLogFN = String.format("debug_log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
 
@@ -73,6 +72,11 @@ public final class LogHandler {
       this.logFH = new FileHandler(this.logDir + "/" + logFN, true);
       this.logFH.setFormatter(new SimpleFormatter());
       this.logFH.setFilter(new logFilter(Level.INFO));
+
+      this.erroLogFH = new FileHandler(this.logDir + "/" + errorLogFN, true);
+      this.erroLogFH.setFormatter(new SimpleFormatter());
+      this.erroLogFH.setFilter(new logFilter(Level.SEVERE));
+
     } catch (SecurityException e) {  
       e.printStackTrace();
     } catch (IOException e) {  
@@ -85,9 +89,13 @@ public final class LogHandler {
      * Create logs, and adding log handlers
     */
     if(logger == null) {
+      if(sysInfo.getIsDebugMode()) {
+        this.logDir = "../demo/log/";
+      }
       logger = Logger.getLogger(LogHandler.class.getName());
       logger.setLevel(Level.FINE);
       createLogFiles();
+      logger.addHandler(this.erroLogFH);
       logger.addHandler(this.logFH);
       logger.addHandler(this.debugLogFH);
     }
@@ -285,7 +293,7 @@ public final class LogHandler {
   }
 
   public void logSendCompleteMsg(String recvId) {
-    String msg = String.format("Peer [%s] (server) sending 'complete' message to [%s]", sysInfo.getHostPeer().getId(), recvId);
+    String msg = String.format("Peer [%s] (client) sending 'complete' message to [%s]", sysInfo.getHostPeer().getId(), recvId);
     logger.fine(msg);
   }
 
@@ -294,8 +302,18 @@ public final class LogHandler {
     logger.info(msg);
   }
 
+  public void logReceiveBackCompleteMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (client) received the return 'complete' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logSystemReadyShutDown(int countDown) {
+    String msg = String.format("Peer [%s] is about to close, the countdown is %s", sysInfo.getHostPeer().getId(), countDown);
+    logger.info(msg);
+  }
+
   public void logSystemIsComplete() {
-    String msg = String.format("Peer [%s] closed, all nodes are complete", sysInfo.getHostPeer().getId());
+    String msg = String.format("Peer [%s] closed, system is completed", sysInfo.getHostPeer().getId());
     logger.info(msg);
   }
 }

@@ -18,7 +18,7 @@ import utils.ErrorCode;
  * Create a singleton for System Parameters
  */
 public final class SystemInfo {
-  
+  private boolean isDebugMode = true;
   private final ReentrantLock lock = new ReentrantLock();
   private static SystemInfo singletonObj = null;
 
@@ -36,12 +36,12 @@ public final class SystemInfo {
    *    Use for communicating between Interval thread and main Server thread.
    */
   private Peer host;
-  private boolean isSystemComplete;
+  private boolean isNeighborsComplete;
   private ServerSocket serverListener;
   private Timer PreferSelectTimer;
   private Timer OptSelectTimer;
+  private Timer isSystemCompleteTimer;
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
-  
   /**
    * Maps for Preferred Selection
    */
@@ -56,12 +56,16 @@ public final class SystemInfo {
 
   // Multiple handlers will modify and get this object - use ConcurrentHashMap
   private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
-	private ConcurrentHashMap<String, ActualMsg> actMsgMap = new ConcurrentHashMap<String, ActualMsg>();
-  // Multiple clients will modify and get this object - use ConcurrentHashMap
-  private ConcurrentHashMap<String, Socket> clientConnMap = new ConcurrentHashMap<String, Socket>();
-
+  private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
+	private ConcurrentHashMap<String, ActualMsg> serverActMsgMap = new ConcurrentHashMap<String, ActualMsg>();
   private List<Integer> blockList  = new ArrayList<Integer>();
   private List<Integer> newObtainBlocks = Collections.synchronizedList(blockList);
+
+  // Multiple clients will modify and get this object - use ConcurrentHashMap
+  private ConcurrentHashMap<String, Socket> clientConnMap = new ConcurrentHashMap<String, Socket>();
+  private ConcurrentHashMap<String, ObjectOutputStream> clientOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
+  private ConcurrentHashMap<String, ActualMsg> clientActMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+  private ConcurrentHashMap<String, Boolean> isClientCompleteMap = new ConcurrentHashMap<String, Boolean>();
 
   
   /**
@@ -83,9 +87,10 @@ public final class SystemInfo {
     singletonObj = new SystemInfo();
     singletonObj.initHostPeer(host);
     singletonObj.initNeighborMap(neighborMap);
-    singletonObj.isSystemComplete = false;
+    singletonObj.isNeighborsComplete = false;
     singletonObj.PreferSelectTimer = new Timer();
     singletonObj.OptSelectTimer = new Timer();
+    singletonObj.isSystemCompleteTimer = new Timer();
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -133,6 +138,10 @@ public final class SystemInfo {
     this.neighborMap = neighborMap;
   }
   
+  public void initDebugMode(boolean debug) {
+    this.isDebugMode = debug;
+  }
+
   public void initSystemParam(List<String> SystemInfoList) {
     try {
       this.preferN = Integer.parseInt(SystemInfoList.get(0));
@@ -163,8 +172,8 @@ public final class SystemInfo {
     this.newObtainBlocks.add(blockIdx);
   }
 
-  public void setIsSystemComplete() {
-    this.isSystemComplete = true;
+  public void setIsNeighborsComplete() {
+    this.isNeighborsComplete = true;
   }
 
   /**
@@ -173,6 +182,10 @@ public final class SystemInfo {
    */
   public void setOptUnchokingPeer(Peer selected) {
     this.optUnchokingPeer = selected;
+  }
+
+  public boolean getIsDebugMode() {
+    return this.isDebugMode;
   }
 
   /**
@@ -186,8 +199,12 @@ public final class SystemInfo {
     return this.serverListener;
   }
 
-  public boolean getIsSystemComplete() {
-    return this.isSystemComplete;
+  public boolean getIsNeighborsComplete() {
+    return this.isNeighborsComplete;
+  }
+
+  public Timer getIsSystemCompleteTimer() {
+    return this.isSystemCompleteTimer;
   }
 
   public Timer getPreferSelectTimer() {
@@ -246,14 +263,29 @@ public final class SystemInfo {
     return this.serverConnMap;
   }
 
-  public ConcurrentHashMap<String, ActualMsg> getActMsgMap() {
-    return this.actMsgMap;
+  public ConcurrentHashMap<String, ObjectOutputStream> getServerOpStream() {
+    return this.serverOpStream;
+  }
+
+  public ConcurrentHashMap<String, ActualMsg> getServerActMsgMap() {
+    return this.serverActMsgMap;
   }
 
   public ConcurrentHashMap<String, Socket> getClientConnMap() {
     return this.clientConnMap;
   }
 
+  public ConcurrentHashMap<String, ObjectOutputStream> getClientOpStream() {
+    return this.clientOpStream;
+  }
+
+  public ConcurrentHashMap<String, ActualMsg> getClientActMsgMap() {
+    return this.clientActMsgMap;
+  }
+
+  public ConcurrentHashMap<String, Boolean> getIsClientCompleteMap() {
+    return this.isClientCompleteMap;
+  }
   /**
    * 1. Copy newObtainBlocks with lock.
    * 2. Clear newObtainBlocks
@@ -310,7 +342,7 @@ public final class SystemInfo {
   public long getClientRequestPieceInr() {
     return SystemInfo.clientRequestPieceInr;
   }
-
+  
   /**
    * Test Function
    */

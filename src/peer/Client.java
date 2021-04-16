@@ -4,6 +4,7 @@ import java.net.*;
 import java.io.*;
 import java.util.Map.Entry;
 import utils.CustomExceptions;
+import utils.ErrorCode;
 import utils.LogHandler;
 import utils.Tools;
 
@@ -19,7 +20,9 @@ public class Client extends Peer implements Runnable {
 	private static FileManager fm = FileManager.getInstance();
 	private HandShake handShake;
 	private ActualMsg actMsg;
-	
+	private ObjectOutputStream opStream = null;
+	private ObjectInputStream inStream = null;
+	private boolean isClientComplete = false;
 	/**
 	 * Use to count download rate
 	 */
@@ -41,122 +44,116 @@ public class Client extends Peer implements Runnable {
 	}
 
 	public void run() {
-		try {
-			while(!this.clientPeer.getIsComplete()) {
-				try {
-					// create a socket to connect to the server
-					if (this.tryToConnect) {
-						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
-						sysInfo.getClientConnMap().put(targetHostPeer.getId(), requestSocket);
-						logging.logStartConn(clientPeer, targetHostPeer);
-					}
-					/** 
-					 * Disable tryToConnect
-					 * Initialize inputStream and outputStream
-					*/
-					this.tryToConnect = false;
-					OutputStream outConn = requestSocket.getOutputStream();
-					InputStream inConn = requestSocket.getInputStream();
+		while(!isClientComplete) {
+			try {
+				// create a socket to connect to the server
+				if (this.tryToConnect) {
+					logging.logStartConn(clientPeer, targetHostPeer);
+					this.requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
+					sysInfo.getClientConnMap().put(targetHostPeer.getId(), this.requestSocket);
 					
-					/**
-					 * this.handShake is null for not been handshake before
-					 * - Send handshake MSG
-					 * - Validate handShake response
-					*/
-					if(this.handShake == null) {
-						this.handShake = new HandShake(targetHostPeer);
-											
-						int retryHandShake = 0;
-						while(retryHandShake < sysInfo.getRetryLimit()) {
-							this.handShake.SendHandShake(outConn);
-							
-							logging.logSendHandShakeMsg(this.targetHostPeer.getId(), "client");
-							this.handShake.ReceiveHandShake(inConn);
-							
-							if(this.handShake.isSuccess()) {
-								logging.logHandShakeSuccess(this.clientPeer, this.targetHostPeer);
-								break;
-							}
+					this.opStream = new ObjectOutputStream(requestSocket.getOutputStream());
+					sysInfo.getClientOpStream().put(targetHostPeer.getId(), this.opStream);
+					
+					sysInfo.getClientActMsgMap().put(targetHostPeer.getId(), this.actMsg);
+					this.inStream = new ObjectInputStream(requestSocket.getInputStream());
+				}
+			
+				if(sysInfo.getClientConnMap().get(targetHostPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missClientConn, "missing client connection object, recreate the socket");
+				}
 
-							logging.writeLog(
-								"warning", 
-								String.format("Handshake with [%s] failed, start retry %s", targetHostPeer.getId(), retryHandShake)
-							);
-							Tools.timeSleep(sysInfo.getRetryInterval());
-							retryHandShake++;
+				if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missClientOpStream, "missing client opStream, recreate the socket");
+				}
+
+				if(sysInfo.getClientActMsgMap().get(targetHostPeer.getId()) == null) {
+					throw new CustomExceptions(ErrorCode.missActMsgObj, "missing actMsgMap, recreate the socket");
+				}
+				/** 
+				 * Disable tryToConnect
+				 * Initialize inputStream and outputStream
+				*/
+				this.tryToConnect = false;
+				
+				/**
+				 * this.handShake is null for not been handshake before
+				 * - Send handshake MSG
+				 * - Validate handShake response
+				*/
+				if(this.handShake == null) {
+					this.handShake = new HandShake(targetHostPeer);
+										
+					int retryHandShake = 0;
+					while(retryHandShake < sysInfo.getRetryLimit()) {
+						this.handShake.SendHandShake(this.opStream);
+						
+						logging.logSendHandShakeMsg(this.targetHostPeer.getId(), "client");
+						this.handShake.ReceiveHandShake(inStream);
+						
+						if(this.handShake.isSuccess()) {
+							logging.logHandShakeSuccess(this.clientPeer, this.targetHostPeer);
+							break;
 						}
-					}
-					
-					byte msg_type = -1;
-					while(true){
-						// Receive msg from server
-						startReadTime = System.nanoTime();
-						msg_type = actMsg.recv(inConn);
-						if(msg_type != -1) {
-							boolean isComplete = reactions(msg_type, outConn);
-							if(isComplete) {
-								// jump to close connections with client
-								break;
-							}
-						}
-					}
-				}
-				catch (ConnectException e) {
-					if(this.clientPeer.getIsComplete()) {
+
 						logging.writeLog(
-							"(Client thread) connection close by server " + targetHostPeer.getId() + ", client peer is completed"
+							"warning", 
+							String.format("Handshake with [%s] failed, start retry %s", targetHostPeer.getId(), retryHandShake)
 						);
-						return;
-					}
-					else {
-						String trace = Tools.getStackTrace(e);
-						logging.logConnError(clientPeer, targetHostPeer);
-						logging.writeLog("warning", 
-							"(Client thread) ConnectException with client: " + targetHostPeer.getId() + ", ex:" + trace
-						);
-						recreate_connection(targetHostPeer);
+						Tools.timeSleep(sysInfo.getRetryInterval());
+						retryHandShake++;
 					}
 				}
-				catch(CustomExceptions e){
-					String trace = Tools.getStackTrace(e);
-					logging.writeLog("warning", 
-						"(Client thread) CustomExceptions with client: " + targetHostPeer.getId() + ", ex:" + trace
-					);
-					recreate_connection(targetHostPeer);
-				}
-				catch(IOException e){
-					if(this.clientPeer.getIsComplete()) {
-						logging.writeLog(
-							"(Client thread) connection close by server " + targetHostPeer.getId() + ", client peer is completed"
-						);
-						return;
+				
+				byte msg_type = -1;
+				while(!isClientComplete){
+					// Receive msg from server
+					startReadTime = System.nanoTime();
+					msg_type = actMsg.recv(inStream);
+					if(msg_type != -1) {
+						reactions(msg_type);
 					}
-					else {
-						String trace = Tools.getStackTrace(e);
-						logging.writeLog("warning", 
-							"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
-						);
-						recreate_connection(targetHostPeer);
-					}
+					if(isClientComplete) break;
 				}
 			}
-		}
-		finally{
-			try{
-				if(requestSocket != null) {
-					logging.writeLog(
-						"(Client thread) close client connection with client: " + targetHostPeer.getId()
-					);
-					requestSocket.close();
-				}
-				logging.writeLog(
-					"(Client thread) close client thread with: " + targetHostPeer.getId()
+			catch (ConnectException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.logConnError(clientPeer, targetHostPeer);
+				logging.writeLog("warning", 
+					"(Client thread) ConnectException with client: " + targetHostPeer.getId() + ", ex:" + trace
 				);
+				recreate_connection(targetHostPeer);
+			}
+			catch(CustomExceptions e){
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("warning", 
+					"(Client thread) CustomExceptions with client: " + targetHostPeer.getId() + ", ex:" + trace
+				);
+				recreate_connection(targetHostPeer);
 			}
 			catch(IOException e){
-				logging.writeLog("severe", "Client close connection failed, ex:" + e);
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("warning", 
+					"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
+				);
+				recreate_connection(targetHostPeer);
+			}
+			finally{
+				try{
+					logging.writeLog(
+						"(Client thread) close client connection with client: " + targetHostPeer.getId() + ", check close client flag: " + isClientComplete
+					);
+					if(requestSocket != null) {
+						requestSocket.close();
+					}
+				}
+				catch(IOException e){
+					String trace = Tools.getStackTrace(e);
+					logging.writeLog("severe", "client close connection failed, with " + targetHostPeer.getId() + ",ex: "+ trace);
+				}
 			}
 		}
+		removeCommunicateObjects();
 	}
 
 	/**
@@ -167,14 +164,46 @@ public class Client extends Peer implements Runnable {
 		Tools.timeSleep(sysInfo.getRetryInterval());
 		tryToConnect = true;
 		this.handShake = null;
+		this.opStream = null;
+		this.inStream = null;
 	}
 
-	private synchronized void processClosingClient() throws IOException{
-		logging.logCompleteFile();
-		this.clientPeer.setIsComplete();
-		logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
-		// send complete message to all server
-		sendCompleteMessageToAll();
+	private void removeCommunicateObjects() {
+		if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) != null) {
+			try {
+				sysInfo.getClientOpStream().get(targetHostPeer.getId()).close();
+			}
+			catch (IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("removeCommunicateObjects getClientOpStream failed, ex:" + trace);
+			}	
+			sysInfo.getClientOpStream().remove(targetHostPeer.getId());
+		}
+		
+		if(sysInfo.getClientConnMap().get(targetHostPeer.getId()) != null) {
+			try {
+				sysInfo.getClientConnMap().get(targetHostPeer.getId()).close();
+			}
+			catch (IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("removeCommunicateObjects getClientConnMap failed, ex:" + trace);
+			}
+			sysInfo.getClientConnMap().remove(targetHostPeer.getId());
+		}
+
+		if(sysInfo.getClientActMsgMap().get(targetHostPeer.getId()) != null) {
+			sysInfo.getClientActMsgMap().remove(targetHostPeer.getId());
+		}
+		
+		try {
+			if(this.inStream != null) {
+				this.inStream.close();
+			}
+		}
+		catch (IOException e) {
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog("removeCommunicateObjects inStream failed, ex:" + trace);
+		}
 	}
 	/**
 	 * Reaction of client receiving the msg, base on the msg type 
@@ -183,7 +212,19 @@ public class Client extends Peer implements Runnable {
 	 * @return true -> isEnd
 	 * @throws IOException
 	 */
-	private boolean reactions(byte msg_type, OutputStream outConn) throws IOException{
+	private boolean reactions(byte msg_type) throws IOException{
+
+		if(msg_type == ActualMsg.COMPLETE) {
+			logging.logReceiveBackCompleteMsg(targetHostPeer);
+			// close client
+			isClientComplete = true;
+			sysInfo.getIsClientCompleteMap().put(targetHostPeer.getId(), isClientComplete);
+		}
+
+		if(isDownloadComplete()) {
+			logging.writeLog("peer already complete");
+			return true;
+		}
 
 		if(msg_type == ActualMsg.BITFIELD) {
 			logging.logReceiveBitFieldMsg(this.targetHostPeer);
@@ -191,21 +232,12 @@ public class Client extends Peer implements Runnable {
 			byte[] b = actMsg.bitfieldMsg.getBitfield();
 			fm.insertBitfield(this.targetHostPeer.getId(), b, b.length);
 
-			/**
-			 * Notice other peer is complete after receiving bitfield
-			 */
-			if(fm.isOthersFinish(this.targetHostPeer.getId())) {
-				logging.writeLog("(client) notify that peer " + this.targetHostPeer.getId() + " isComplete");
-				this.targetHostPeer.setIsComplete();
-				sysInfo.getNeighborMap().put(this.targetHostPeer.getId(), this.targetHostPeer);
-			}
-
 			// send interest or not
 			if(fm.isInterested(this.targetHostPeer.getId())) {
-				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.INTERESTED, 0);
 			}
 			else {
-				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.NOTINTERESTED, 0);
 			}
 		}
 		else if(msg_type == ActualMsg.HAVE) {
@@ -228,10 +260,10 @@ public class Client extends Peer implements Runnable {
 			}
 
 			if(fm.isInterested(this.targetHostPeer.getId())) {
-				actMsg.send(outConn, ActualMsg.INTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.INTERESTED, 0);
 			}
 			else {
-				actMsg.send(outConn, ActualMsg.NOTINTERESTED, 0);
+				actMsg.send(opStream, ActualMsg.NOTINTERESTED, 0);
 			}
 		}
 		else if(msg_type == ActualMsg.CHOKE) {
@@ -242,12 +274,6 @@ public class Client extends Peer implements Runnable {
 		}
 		else if(msg_type == ActualMsg.UNCHOKE) {
 			logging.logUnchoking(this.targetHostPeer);
-
-			if(this.clientPeer.getIsComplete()) return false;
-			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
-				processClosingClient();
-				return true;
-			}
 			/**
 			 * 1.choke -> unchoke 
 			 * 		=> set choke to unchoke -> start sending pieces msg until been choked
@@ -258,7 +284,7 @@ public class Client extends Peer implements Runnable {
 			if(clientPeer.getIsChoking()) {
 				clientPeer.setUnChoking();
 			}
-			requestingPiece(this.targetHostPeer, outConn);
+			requestingPiece(this.targetHostPeer);
 		}
 		else if(msg_type == ActualMsg.PIECE) {
 			/**
@@ -289,8 +315,10 @@ public class Client extends Peer implements Runnable {
 
 			sysInfo.addNewObtainBlocks(blockIdx);
 			
-			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
-				processClosingClient();
+			if(isDownloadComplete()) {
+				logging.logCompleteFile();
+				broadcastComplete t = new broadcastComplete();
+				t.start();
 				return true;
 			}
 
@@ -299,7 +327,7 @@ public class Client extends Peer implements Runnable {
 				return false;
 			}
 			Tools.timeSleep(200);
-			requestingPiece(this.targetHostPeer, outConn);
+			requestingPiece(this.targetHostPeer);
 		}
 		return false;
 	}
@@ -316,29 +344,77 @@ public class Client extends Peer implements Runnable {
 	 * @return
 	 * @throws IOException
 	 */
-	private int requestingPiece(Peer sender, OutputStream outConn) throws IOException {
+	private int requestingPiece(Peer sender) throws IOException {
 		int requestBlockIdx = fm.pickInterestedFileBlock(sender.getId());
 		if(requestBlockIdx == -1) {
 			logging.writeLog("requestingPiece stop, no interested block"); 
 			return -1;
 		} 
-		this.actMsg.send(outConn, ActualMsg.REQUEST, requestBlockIdx);
+		this.actMsg.send(opStream, ActualMsg.REQUEST, requestBlockIdx);
 		return 0;
 	}
-
-	private void sendCompleteMessageToAll() throws IOException {
-		logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientConnMap().size() + " servers");
-		for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
-			logging.logSendCompleteMsg(conn.getKey());
-			OutputStream outConn = conn.getValue().getOutputStream();
-			this.actMsg.send(outConn, ActualMsg.COMPLETE, 0);
-		}
-	}
 	
-	boolean isClientComplete(){
+	public void closeAllClientThread() throws IOException {
+		logging.writeLog("(client thread) close all client thread # " + sysInfo.getClientConnMap().size());
+		for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
+			try {
+				logging.writeLog("close client thread: " + conn.getKey());
+				conn.getValue().close();
+			}
+			catch(IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("close client thread, ex: " + trace);
+			}
+		}
+		sysInfo.getClientConnMap().clear();
+	}
+
+	private boolean isDownloadComplete(){
 		if(fm != null && fm.isComplete()) return true;
 		return false;
 	}
+
+	private static class broadcastComplete extends Thread {
+		public void run() {
+			logging.writeLog("start broadcastComplete");
+			while(true) {
+				if(isAllClientComplete()) {
+					logging.writeLog("end broadcastComplete");
+					break;
+				}
+				sendCompleteMessageToAll();
+				Tools.timeSleep(sysInfo.getRetryInterval());
+			}
+		}
+
+		private boolean isAllClientComplete() {
+			logging.writeLog("check isAllClientComplete?");
+			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
+				String peerID = n.getKey();
+				if(sysInfo.getIsClientCompleteMap().get(peerID) == null) return false;
+			}
+			return true;
+		}
+
+		private void sendCompleteMessageToAll(){
+			logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientOpStream().size() + " servers");
+			for(Entry<String, ObjectOutputStream> conn: sysInfo.getClientOpStream().entrySet()) {
+				String peerID = conn.getKey();
+				logging.logSendCompleteMsg(peerID);
+				try {
+					if(sysInfo.getClientActMsgMap().get(peerID) != null) {
+						sysInfo.getClientActMsgMap().get(peerID).send(conn.getValue(), ActualMsg.COMPLETE, 0);
+					}
+					else {
+						logging.writeLog("missing ActMsg obj for " + peerID);
+					}
+				}
+				catch(IOException e) {
+				}
+			}
+		}
+	}
+
 	/**
 	 * 
 	 * @param args
