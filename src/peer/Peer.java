@@ -53,26 +53,6 @@ public class Peer {
 			);
 		}
 	}
-
-  /**
-   * Set up only peerId, use in Server thread
-   * @param peerId
-   */
-  public Peer(String peerId) throws CustomExceptions{
-    try {
-      this.peerId = peerId;
-      this.hostName = null;
-      this.port = -1;
-      this.hasFile = false;
-    }
-    catch (Exception e) {
-      String trace = Tools.getStackTrace(e);
-      throw new CustomExceptions(
-        ErrorCode.failParsePeerInfo, 
-				String.format("failed to parse peer id, ex:" + trace)
-			);
-		}
-	}
   
   public String getId() {
 		return this.peerId;

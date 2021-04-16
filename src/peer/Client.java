@@ -37,6 +37,7 @@ public class Client extends Peer implements Runnable {
 	public Client(Peer targetHostPeer) {
 		this.clientPeer = sysInfo.getHostPeer();
 		this.targetHostPeer = targetHostPeer;
+		this.requestSocket = null;
 		this.tryToConnect = true;
 		this.handShake = null;
 		this.actMsg = new ActualMsg(this.targetHostPeer);
@@ -83,9 +84,8 @@ public class Client extends Peer implements Runnable {
 				*/
 				if(this.handShake == null) {
 					this.handShake = new HandShake(targetHostPeer);
-										
-					int retryHandShake = 0;
-					while(retryHandShake < sysInfo.getRetryLimit()) {
+						
+					while(true) {
 						this.handShake.SendHandShake(this.opStream);
 						
 						logging.logSendHandShakeMsg(this.targetHostPeer.getId(), "client");
@@ -96,12 +96,8 @@ public class Client extends Peer implements Runnable {
 							break;
 						}
 
-						logging.writeLog(
-							"warning", 
-							String.format("Handshake with [%s] failed, start retry %s", targetHostPeer.getId(), retryHandShake)
-						);
+						logging.writeLog("warning", String.format("Handshake with [%s] failed, start retry", targetHostPeer.getId()));
 						Tools.timeSleep(sysInfo.getRetryInterval());
-						retryHandShake++;
 					}
 				}
 				
@@ -135,13 +131,23 @@ public class Client extends Peer implements Runnable {
 					"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
 				);
 			}
+			catch(Exception e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("warning", 
+					"(Client thread) Exception with client: " + targetHostPeer.getId() + ", ex:" + trace
+				);
+			}
 			finally{
-				try{
+				try {
 					logging.writeLog(
-						"(Client thread) close client connection with client: " + targetHostPeer.getId() + ", check close client flag: " + isClientComplete
+						"(Client thread) client final block: " + targetHostPeer.getId() + ", check close client flag: " + isClientComplete
 					);
 					if(requestSocket != null) {
+						logging.writeLog(
+							"(Client thread) close client connection with client: " + targetHostPeer.getId() + ", check close client flag: " + isClientComplete
+						);
 						requestSocket.close();
+						requestSocket = null;
 					}
 				}
 				catch(IOException e){
@@ -150,19 +156,22 @@ public class Client extends Peer implements Runnable {
 				}
 			}
 			if(!isClientComplete) {
-				recreate_connection(targetHostPeer);
+				recreate_connection();
 				removeCommunicateObjects();
 			}
 		}
+		removeCommunicateObjects();
+		return;
 	}
 
 	/**
 	 * Client thread - recreate socket connection with target host peer
 	 */
-	private void recreate_connection(Peer targetHostPeer) {
+	private void recreate_connection() {
 		logging.writeLog("warning", "RECONNECTING Peer [" + targetHostPeer.getId() + "]" );
 		Tools.timeSleep(sysInfo.getRetryInterval());
 		tryToConnect = true;
+		this.requestSocket = null;
 		this.handShake = null;
 		this.opStream = null;
 		this.inStream = null;

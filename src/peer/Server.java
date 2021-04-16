@@ -534,7 +534,7 @@ public class Server extends Thread{
 						// waiting for hand shake message
 						getClientId = this.handShake.ReceiveHandShake(inStream);
 						if(this.handShake.isSuccess() && getClientId != null) {
-							this.client = new Peer(getClientId);
+							this.client = sysInfo.getNeighborMap().get(getClientId);
 							// set clientID
 							this.handShake.setTargetPeerID(getClientId);
 							this.handShake.SendHandShake(opStream);
