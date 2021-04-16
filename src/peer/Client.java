@@ -122,21 +122,18 @@ public class Client extends Peer implements Runnable {
 				logging.writeLog("warning", 
 					"(Client thread) ConnectException with client: " + targetHostPeer.getId() + ", ex:" + trace
 				);
-				recreate_connection(targetHostPeer);
 			}
 			catch(CustomExceptions e){
 				String trace = Tools.getStackTrace(e);
 				logging.writeLog("warning", 
 					"(Client thread) CustomExceptions with client: " + targetHostPeer.getId() + ", ex:" + trace
 				);
-				recreate_connection(targetHostPeer);
 			}
 			catch(IOException e){
 				String trace = Tools.getStackTrace(e);
 				logging.writeLog("warning", 
 					"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
 				);
-				recreate_connection(targetHostPeer);
 			}
 			finally{
 				try{
@@ -152,8 +149,11 @@ public class Client extends Peer implements Runnable {
 					logging.writeLog("severe", "client close connection failed, with " + targetHostPeer.getId() + ",ex: "+ trace);
 				}
 			}
+			if(!isClientComplete) {
+				recreate_connection(targetHostPeer);
+				removeCommunicateObjects();
+			}
 		}
-		removeCommunicateObjects();
 	}
 
 	/**
@@ -169,17 +169,6 @@ public class Client extends Peer implements Runnable {
 	}
 
 	private void removeCommunicateObjects() {
-		if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) != null) {
-			try {
-				sysInfo.getClientOpStream().get(targetHostPeer.getId()).close();
-			}
-			catch (IOException e) {
-				String trace = Tools.getStackTrace(e);
-				logging.writeLog("removeCommunicateObjects getClientOpStream failed, ex:" + trace);
-			}	
-			sysInfo.getClientOpStream().remove(targetHostPeer.getId());
-		}
-		
 		if(sysInfo.getClientConnMap().get(targetHostPeer.getId()) != null) {
 			try {
 				sysInfo.getClientConnMap().get(targetHostPeer.getId()).close();
@@ -189,6 +178,17 @@ public class Client extends Peer implements Runnable {
 				logging.writeLog("removeCommunicateObjects getClientConnMap failed, ex:" + trace);
 			}
 			sysInfo.getClientConnMap().remove(targetHostPeer.getId());
+		}
+
+		if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) != null) {
+			try {
+				sysInfo.getClientOpStream().get(targetHostPeer.getId()).close();
+			}
+			catch (IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("removeCommunicateObjects getClientOpStream failed, ex:" + trace);
+			}	
+			sysInfo.getClientOpStream().remove(targetHostPeer.getId());
 		}
 
 		if(sysInfo.getClientActMsgMap().get(targetHostPeer.getId()) != null) {
