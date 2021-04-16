@@ -161,4 +161,8 @@ public class Peer {
   public void setIsComplete() {
     this.isComplete = true;
   }
+
+  public void setUnComplete() {
+    this.isComplete = false;
+  }
 }

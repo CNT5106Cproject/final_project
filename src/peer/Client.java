@@ -4,6 +4,7 @@ import java.net.*;
 import java.io.*;
 import java.util.Map.Entry;
 import utils.CustomExceptions;
+import utils.ErrorCode;
 import utils.LogHandler;
 import utils.Tools;
 
@@ -21,7 +22,7 @@ public class Client extends Peer implements Runnable {
 	private ActualMsg actMsg;
 	private ObjectOutputStream opStream = null;
 	private ObjectInputStream inStream = null;
-	
+	private boolean isClientComplete = false;
 	/**
 	 * Use to count download rate
 	 */
@@ -44,18 +45,31 @@ public class Client extends Peer implements Runnable {
 
 	public void run() {
 		try {
-			while(!this.clientPeer.getIsComplete()) {
+			while(!isClientComplete) {
 				try {
 					// create a socket to connect to the server
 					if (this.tryToConnect) {
-						requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
-						sysInfo.getClientConnMap().put(targetHostPeer.getId(), requestSocket);
-						
-						opStream = new ObjectOutputStream(requestSocket.getOutputStream());
-						sysInfo.getClientOpStream().put(targetHostPeer.getId(), opStream);
-						inStream = new ObjectInputStream(requestSocket.getInputStream());
-						
 						logging.logStartConn(clientPeer, targetHostPeer);
+						this.requestSocket = new Socket(targetHostPeer.getHostName(), targetHostPeer.getPort());
+						sysInfo.getClientConnMap().put(targetHostPeer.getId(), this.requestSocket);
+						
+						this.opStream = new ObjectOutputStream(requestSocket.getOutputStream());
+						sysInfo.getClientOpStream().put(targetHostPeer.getId(), this.opStream);
+						
+						sysInfo.getClientActMsgMap().put(targetHostPeer.getId(), this.actMsg);
+						this.inStream = new ObjectInputStream(requestSocket.getInputStream());
+					}
+				
+					if(sysInfo.getClientConnMap().get(targetHostPeer.getId()) == null) {
+						throw new CustomExceptions(ErrorCode.missClientConn, "missing client connection object, recreate the socket");
+					}
+	
+					if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) == null) {
+						throw new CustomExceptions(ErrorCode.missClientOpStream, "missing client opStream, recreate the socket");
+					}
+	
+					if(sysInfo.getClientActMsgMap().get(targetHostPeer.getId()) == null) {
+						throw new CustomExceptions(ErrorCode.missActMsgObj, "missing actMsgMap, recreate the socket");
 					}
 					/** 
 					 * Disable tryToConnect
@@ -93,34 +107,23 @@ public class Client extends Peer implements Runnable {
 					}
 					
 					byte msg_type = -1;
-					while(true){
+					while(!isClientComplete){
 						// Receive msg from server
 						startReadTime = System.nanoTime();
 						msg_type = actMsg.recv(inStream);
 						if(msg_type != -1) {
-							boolean isComplete = reactions(msg_type);
-							if(isComplete) {
-								// jump to close connections with client
-								break;
-							}
+							reactions(msg_type);
 						}
+						if(isClientComplete) break;
 					}
 				}
 				catch (ConnectException e) {
-					if(this.clientPeer.getIsComplete()) {
-						logging.writeLog(
-							"(Client thread) connection close by server " + targetHostPeer.getId() + ", client peer is completed"
-						);
-						return;
-					}
-					else {
-						String trace = Tools.getStackTrace(e);
-						logging.logConnError(clientPeer, targetHostPeer);
-						logging.writeLog("warning", 
-							"(Client thread) ConnectException with client: " + targetHostPeer.getId() + ", ex:" + trace
-						);
-						recreate_connection(targetHostPeer);
-					}
+					String trace = Tools.getStackTrace(e);
+					logging.logConnError(clientPeer, targetHostPeer);
+					logging.writeLog("warning", 
+						"(Client thread) ConnectException with client: " + targetHostPeer.getId() + ", ex:" + trace
+					);
+					recreate_connection(targetHostPeer);
 				}
 				catch(CustomExceptions e){
 					String trace = Tools.getStackTrace(e);
@@ -130,39 +133,25 @@ public class Client extends Peer implements Runnable {
 					recreate_connection(targetHostPeer);
 				}
 				catch(IOException e){
-					if(this.clientPeer.getIsComplete()) {
-						logging.writeLog(
-							"(Client thread) connection close by server " + targetHostPeer.getId() + ", client peer is completed"
-						);
-						return;
-					}
-					else {
-						String trace = Tools.getStackTrace(e);
-						logging.writeLog("warning", 
-							"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
-						);
-						recreate_connection(targetHostPeer);
-					}
+					String trace = Tools.getStackTrace(e);
+					logging.writeLog("warning", 
+						"(Client thread) IOException with client: " + targetHostPeer.getId() + ", ex:" + trace
+					);
+					recreate_connection(targetHostPeer);
 				}
 			}
 		}
 		finally{
 			try{
-				if(requestSocket != null) {
-					logging.writeLog(
-						"(Client thread) close client connection with client: " + targetHostPeer.getId()
-					);
-					removeCommunicateObjects();
-
-					requestSocket.close();
-				}
 				logging.writeLog(
-					"(Client thread) close client thread with: " + targetHostPeer.getId()
+					"(Client thread) close client connection with client: " + targetHostPeer.getId() + ", check close client flag: " + isClientComplete
 				);
+				removeCommunicateObjects();
+				requestSocket.close();
 			}
 			catch(IOException e){
 				String trace = Tools.getStackTrace(e);
-				logging.writeLog("severe", "Client close connection failed, ex:" + trace);
+				logging.writeLog("severe", "client close connection failed, with " + targetHostPeer.getId() + ",ex: "+ trace);
 			}
 		}
 	}
@@ -175,35 +164,46 @@ public class Client extends Peer implements Runnable {
 		Tools.timeSleep(sysInfo.getRetryInterval());
 		tryToConnect = true;
 		this.handShake = null;
-		removeCommunicateObjects();
+		this.opStream = null;
+		this.inStream = null;
 	}
 
 	private void removeCommunicateObjects() {
 		try {
-			if(this.opStream != null) {
-				this.opStream.close();
+			if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) != null) {
+				sysInfo.getClientOpStream().get(targetHostPeer.getId()).close();
+				sysInfo.getClientOpStream().remove(targetHostPeer.getId());
 			}
+		}
+		catch (IOException e) {
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog("removeCommunicateObjects getClientOpStream failed, ex:" + trace);
+		}
+
+		try {
+			if(sysInfo.getClientConnMap().get(targetHostPeer.getId()) != null) {
+				sysInfo.getClientConnMap().get(targetHostPeer.getId()).close();
+				sysInfo.getClientConnMap().remove(targetHostPeer.getId());
+			}
+		}
+		catch (IOException e) {
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog("removeCommunicateObjects getClientConnMap failed, ex:" + trace);
+		}
+
+		if(sysInfo.getClientActMsgMap().get(targetHostPeer.getId()) != null) {
+			sysInfo.getClientActMsgMap().remove(targetHostPeer.getId());
+		}
+		
+		try {
 			if(this.inStream != null) {
 				this.inStream.close();
 			}
 		}
 		catch (IOException e) {
 			String trace = Tools.getStackTrace(e);
-			logging.writeLog("severe", "removeCommunicateObjects failed, ex:" + trace);
+			logging.writeLog("removeCommunicateObjects inStream failed, ex:" + trace);
 		}
-		if(sysInfo.getClientOpStream().get(targetHostPeer.getId()) != null) {
-			sysInfo.getClientOpStream().remove(targetHostPeer.getId());
-		}
-		if(sysInfo.getClientConnMap().get(targetHostPeer.getId()) != null) {
-			sysInfo.getClientConnMap().remove(targetHostPeer.getId());
-		}
-	}
-
-	private synchronized void processClosingClient() throws IOException{
-		this.clientPeer.setIsComplete();
-		logging.writeLog("send COMPLETE msg to all server, isComplete = true, close connection with: " + targetHostPeer.getId());
-		// send complete message to all server
-		sendCompleteMessageToAll();
 	}
 	/**
 	 * Reaction of client receiving the msg, base on the msg type 
@@ -214,20 +214,23 @@ public class Client extends Peer implements Runnable {
 	 */
 	private boolean reactions(byte msg_type) throws IOException{
 
+		if(msg_type == ActualMsg.COMPLETE) {
+			logging.logReceiveBackCompleteMsg(targetHostPeer);
+			// close client
+			isClientComplete = true;
+			sysInfo.getIsClientCompleteMap().put(targetHostPeer.getId(), isClientComplete);
+		}
+
+		if(isDownloadComplete()) {
+			logging.writeLog("peer already complete");
+			return true;
+		}
+
 		if(msg_type == ActualMsg.BITFIELD) {
 			logging.logReceiveBitFieldMsg(this.targetHostPeer);
 			// update targetHostPeer's bitfield
 			byte[] b = actMsg.bitfieldMsg.getBitfield();
 			fm.insertBitfield(this.targetHostPeer.getId(), b, b.length);
-
-			/**
-			 * Notice other peer is complete after receiving bitfield
-			 */
-			if(fm.isOthersFinish(this.targetHostPeer.getId())) {
-				logging.writeLog("(client) notify that peer " + this.targetHostPeer.getId() + " isComplete");
-				this.targetHostPeer.setIsComplete();
-				sysInfo.getNeighborMap().put(this.targetHostPeer.getId(), this.targetHostPeer);
-			}
 
 			// send interest or not
 			if(fm.isInterested(this.targetHostPeer.getId())) {
@@ -271,12 +274,6 @@ public class Client extends Peer implements Runnable {
 		}
 		else if(msg_type == ActualMsg.UNCHOKE) {
 			logging.logUnchoking(this.targetHostPeer);
-
-			if(this.clientPeer.getIsComplete()) return false;
-			if(isClientComplete() && !this.clientPeer.getIsComplete()) {
-				processClosingClient();
-				return true;
-			}
 			/**
 			 * 1.choke -> unchoke 
 			 * 		=> set choke to unchoke -> start sending pieces msg until been choked
@@ -318,9 +315,10 @@ public class Client extends Peer implements Runnable {
 
 			sysInfo.addNewObtainBlocks(blockIdx);
 			
-			if(isClientComplete()) {
+			if(isDownloadComplete()) {
 				logging.logCompleteFile();
-				processClosingClient();
+				broadcastComplete t = new broadcastComplete();
+				t.start();
 				return true;
 			}
 
@@ -355,19 +353,68 @@ public class Client extends Peer implements Runnable {
 		this.actMsg.send(opStream, ActualMsg.REQUEST, requestBlockIdx);
 		return 0;
 	}
-
-	private void sendCompleteMessageToAll() throws IOException {
-		logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientOpStream().size() + " servers");
-		for(Entry<String, ObjectOutputStream> conn: sysInfo.getClientOpStream().entrySet()) {
-			logging.logSendCompleteMsg(conn.getKey());
-			this.actMsg.send(conn.getValue(), ActualMsg.COMPLETE, 0);
-		}
-	}
 	
-	boolean isClientComplete(){
+	public void closeAllClientThread() throws IOException {
+		logging.writeLog("(client thread) close all client thread # " + sysInfo.getClientConnMap().size());
+		for(Entry<String, Socket> conn: sysInfo.getClientConnMap().entrySet()) {
+			try {
+				logging.writeLog("close client thread: " + conn.getKey());
+				conn.getValue().close();
+			}
+			catch(IOException e) {
+				String trace = Tools.getStackTrace(e);
+				logging.writeLog("close client thread, ex: " + trace);
+			}
+		}
+		sysInfo.getClientConnMap().clear();
+	}
+
+	private boolean isDownloadComplete(){
 		if(fm != null && fm.isComplete()) return true;
 		return false;
 	}
+
+	private static class broadcastComplete extends Thread {
+		public void run() {
+			logging.writeLog("start broadcastComplete");
+			while(true) {
+				if(isAllClientComplete()) {
+					logging.writeLog("end broadcastComplete");
+					break;
+				}
+				sendCompleteMessageToAll();
+				Tools.timeSleep(sysInfo.getRetryInterval());
+			}
+		}
+
+		private boolean isAllClientComplete() {
+			logging.writeLog("check isAllClientComplete?");
+			for(Entry<String, Peer> n: sysInfo.getNeighborMap().entrySet()) {
+				String peerID = n.getKey();
+				if(sysInfo.getIsClientCompleteMap().get(peerID) == null) return false;
+			}
+			return true;
+		}
+
+		private void sendCompleteMessageToAll(){
+			logging.writeLog("send COMPLETE msg to # " + sysInfo.getClientOpStream().size() + " servers");
+			for(Entry<String, ObjectOutputStream> conn: sysInfo.getClientOpStream().entrySet()) {
+				String peerID = conn.getKey();
+				logging.logSendCompleteMsg(peerID);
+				try {
+					if(sysInfo.getClientActMsgMap().get(peerID) != null) {
+						sysInfo.getClientActMsgMap().get(peerID).send(conn.getValue(), ActualMsg.COMPLETE, 0);
+					}
+					else {
+						logging.writeLog("missing ActMsg obj for " + peerID);
+					}
+				}
+				catch(IOException e) {
+				}
+			}
+		}
+	}
+
 	/**
 	 * 
 	 * @param args
