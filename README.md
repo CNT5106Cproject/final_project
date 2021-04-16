@@ -29,7 +29,7 @@ Please follow the cmd below, and use the cmd in script if needed any adjustment.
 
 Before running the script, please put the configurations and the default file directories in the path of 
 
-- **~/final_project/project/**
+- **~/final_project/demo/**
 
 If the **debug** in peerProcess is true, the program will it reads **PeerInfo_local.cfg** in the config path.
 
@@ -46,28 +46,34 @@ In this mode, all peers will build locally with different port.
 2. start process
 
    ```bash
-   sh ~/final_project/startPeers.sh
+   sh ~/final_project/test/startPeers.sh
    ```
+
+   Wait till all nodes, showing 
 
 3. kill process if needed 
 
    ```
-   sh ~/final_project/killAllPeer.sh
+   sh ~/final_project/test/killAllPeer.sh
    ```
 
 
+4. check the files result by using diff command or use the script below
+
+   ```
+   sh ~/final_project/test/checkFileDiff.sh
+   ```
+
+   It should not show any output which means the file are all the same.
 
 ## How to manually run on remote server?
 
 When you login into the server on csie, you could use these command to start the peer manually.
 
-Be aware that the configurations still needs to remain in 
+Be aware that the configurations to remain in 
 
-- **~/final_project/project/**
-
-Be sure your current directory is
-
-- **~/final_project/**
+- **~/final_project/{target_file}/**
+- **{target_file} = demo** in default, change it if necessary.
 
 1. compile - use script or javac directly
     ```
@@ -75,26 +81,26 @@ Be sure your current directory is
     ```
 
     ```
-    javac -Xlint -d ./project src/peer/*.java src/utils/*.java
+    javac -Xlint -d [target_file] src/PeerProcess.java src/peer/* src/utils/*
     ```
 
-2. start process
+2. start process in the directory of {target _file}
    ```
-   java -Duser.language=en -cp ~/final_project/project peer.PeerProcess 1001
+   java PeerProcess 1001
    ```
 
 3. kill process on ubuntu
    ```
-   ps aux | grep java | grep peer.PeerProces | awk '{print $2}' | xargs /bin/kill
+   ps aux | grep java | grep PeerProces | awk '{print $2}' | xargs /bin/kill
    ```
-
-
 
 
 
 ## Where is the log? How to check?
 
-The log is stored in **~/final_project/log/**, with specific file names. The logs are seperate into debug level and info level, which the former one contains every level logs, and the latter one only contains info level (logs request by project description).
+The log is stored in **~/final_project/{target_file}/log**, with specific file names. The logs are seperate into debug level and info level, which the former one contains every level logs, and the latter one only contains info level (logs request by project description).
+
+- default {target_file} = demo, where we compiled the project
 
 Here is a example, the file name is **debug_log_peer_[1001]_[2021-04-13].log**. With FINE and INFO level logs record in the file.
 
@@ -105,7 +111,15 @@ Here is a example, the file name is **debug_log_peer_[1001]_[2021-04-13].log**. 
 [2021-04-13 12:24:21] [INFO] [utils.LogHandler] Peer [1001] (server) sending handshake message to peer [1008]
 ```
 
+The logs are seperate into 3 files for each node.
 
+- error - with only [SEVERE] Level record inside
+
+- info - with only [INFO] Level record inside
+
+- Debug - with only [Debug] Level record inside
+
+  
 
 ## Classes
 
