@@ -1,5 +1,3 @@
-package peer;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -10,12 +8,15 @@ import java.util.Map.Entry;
 import utils.CustomExceptions;
 import utils.ErrorCode;
 import utils.LogHandler;
+import peer.*;
+
 public class PeerProcess {
+	public static boolean debug = true;
 	private static String peerInfoFN = "PeerInfo.cfg";
 	private static String debugPeerInfoFN = "PeerInfo_debug.cfg";
   private static String SystemInfoFN = "Common.cfg";
 	private static String debugSystemInfoFN = "Common_debug.cfg";
-	private static String cfgDir = "../config/";
+	private static String cfgDir = System.getProperty("user.dir") + "/";
 
 	/**
 	 * Read Peer Info config
@@ -33,9 +34,11 @@ public class PeerProcess {
 			 * Use the testing config 
 			 */
 			fileName = debugPeerInfoFN;
+			cfgDir = "../demo/";
 		}
 
 		try {
+			System.out.println("Working Directory = " + System.getProperty("user.dir"));
 			System.out.println(String.format("[%s] Start reading PeerInfo from %s", hostPeerId, cfgDir + fileName));
 			File cfgFile = new File(cfgDir + fileName);
 			Scanner fileReader = new Scanner(cfgFile);
@@ -99,7 +102,6 @@ public class PeerProcess {
 	 * Main Process of the Peer
 	 */
 	public static void main(String[] args) {
-		boolean debug = true;
 		try {
 			/* Must have at least peer ID */
 			if (args.length < 1) {
@@ -111,6 +113,7 @@ public class PeerProcess {
 
 			/** Get peer's system parameter */
 			SystemInfo sysInfo = SystemInfo.getSingletonObj();
+			sysInfo.initDebugMode(debug);
 			
 			/** Set up peer's logger */
 			LogHandler logging = new LogHandler();
@@ -118,10 +121,13 @@ public class PeerProcess {
 			logging.logEstablishPeer();
 
 			/** Set up peer's file manager */
-
-			// TODO 
-			// 1. Check file exist and hasFile flag
-			String peerFileDir = cfgDir + sysInfo.getHostPeer().getId() + '/' + sysInfo.getFileName();
+			// Check file exist and hasFile flag
+			String peerStoreDir = cfgDir + sysInfo.getHostPeer().getId();
+			File peerStoreFile = new File(peerStoreDir);
+			if(!peerStoreFile.exists()) {
+				peerStoreFile.mkdir();
+			}
+			String peerFileDir = peerStoreDir + '/' + sysInfo.getFileName();
 			String mode = sysInfo.getHostPeer().getHasFile() ? "r" : "rw";
 			FileManager fm = FileManager.getInstance(
 				peerFileDir,
@@ -149,10 +155,11 @@ public class PeerProcess {
 				}
 			}
 			else {
-				logging.writeLog("(peer process) Peer hasFile is is true, no need start client threads");
+				logging.writeLog("(peer process) Peer hasFile is true, no need start client threads to receive from others");
 			}
 
 			logging.writeLog("(peer process) Number of thread create by peer: " + java.lang.Thread.activeCount());
+			return;
 		}
 		catch (Exception e) {
 			e.printStackTrace();

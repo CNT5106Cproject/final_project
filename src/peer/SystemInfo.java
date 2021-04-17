@@ -1,10 +1,14 @@
 package peer;
 
-import java.io.OutputStream;
-import java.net.Socket;
+import java.net.*;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Timer;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
@@ -14,28 +18,56 @@ import utils.ErrorCode;
  * Create a singleton for System Parameters
  */
 public final class SystemInfo {
-  
+  private boolean isDebugMode = true;
   private final ReentrantLock lock = new ReentrantLock();
   private static SystemInfo singletonObj = null;
 
-  private static int retryLimit = 100;
-  private static int retryInr = 3; // retry interval 
-
+  private static int retryLimit = 10;
+  private static long retryInr = 3000; // retry interval (ms)
+  private static long clientRequestPieceInr = 1500; // (ms)
   /**
-   * Host peer infos
+   * Host peer objects
    * - host 
    * - neighborMap
-   * - chokingMap 
-   *    The choking-unChoking interval will assigns new value to this object,
-   *    The opt unChoking interval will use this object to pick opt node.
+   * - chokingMap, unChokingMap
+   *    The choking-unChoking interval will update these two map,
+   *    To picked the sending candidate to send piece.
+   * - serverConnMap, asgMsgMap 
+   *    Use for communicating between Interval thread and main Server thread.
    */
   private Peer host;
+  private boolean isNeighborsComplete;
+  private ServerSocket serverListener;
+  private Timer PreferSelectTimer;
+  private Timer OptSelectTimer;
+  private Timer isSystemCompleteTimer;
   private HashMap<String, Peer> neighborMap = new HashMap<String, Peer>();
+  /**
+   * Maps for Preferred Selection
+   */
   private HashMap<String, Peer> interestMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> unChokingMap = new HashMap<String, Peer>();
   private HashMap<String, Peer> chokingMap = new HashMap<String, Peer>();
-  private HashMap<String, Socket> connectionMap = new HashMap<String, Socket>();
-	private HashMap<String, ActualMsg> actMsgMap = new HashMap<String, ActualMsg>();
+
+  /**
+   * Map for Optimistical Select
+   */
+  private Peer optUnchokingPeer = new Peer();
+
+  // Multiple handlers will modify and get this object - use ConcurrentHashMap
+  private ConcurrentHashMap<String, Socket> serverConnMap = new ConcurrentHashMap<String, Socket>();
+  private ConcurrentHashMap<String, ObjectOutputStream> serverOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
+	private ConcurrentHashMap<String, ActualMsg> serverActMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+  private List<Integer> blockList  = new ArrayList<Integer>();
+  private List<Integer> newObtainBlocks = Collections.synchronizedList(blockList);
+
+  // Multiple clients will modify and get this object - use ConcurrentHashMap
+  private ConcurrentHashMap<String, Socket> clientConnMap = new ConcurrentHashMap<String, Socket>();
+  private ConcurrentHashMap<String, ObjectOutputStream> clientOpStream = new ConcurrentHashMap<String, ObjectOutputStream>();
+  private ConcurrentHashMap<String, ActualMsg> clientActMsgMap = new ConcurrentHashMap<String, ActualMsg>();
+  private ConcurrentHashMap<String, Boolean> isClientCompleteMap = new ConcurrentHashMap<String, Boolean>();
+
+  
   /**
    * System Parameters from config
    */
@@ -53,8 +85,12 @@ public final class SystemInfo {
   
   public SystemInfo(Peer host, HashMap<String, Peer> neighborMap) {
     singletonObj = new SystemInfo();
-    singletonObj.setHostPeer(host);
-    singletonObj.setPeerList(neighborMap);
+    singletonObj.initHostPeer(host);
+    singletonObj.initNeighborMap(neighborMap);
+    singletonObj.isNeighborsComplete = false;
+    singletonObj.PreferSelectTimer = new Timer();
+    singletonObj.OptSelectTimer = new Timer();
+    singletonObj.isSystemCompleteTimer = new Timer();
   }
 
   public SystemInfo(List<String> SystemInfoList) {
@@ -68,7 +104,7 @@ public final class SystemInfo {
     * FileSize 2167705
     * PieceSize 16384
     */
-    singletonObj.setSystemParam(SystemInfoList);
+    singletonObj.initSystemParam(SystemInfoList);
   }
 
   public static SystemInfo getSingletonObj() {
@@ -83,19 +119,30 @@ public final class SystemInfo {
     catch(CustomExceptions e) {
 			System.out.println(e);
 		}
-
     return singletonObj;
   }
+  
 
-  public void setHostPeer(Peer host) {
+  /**
+   * Init system peer and communication objects or params
+   */
+  public void initHostPeer(Peer host) {
     this.host = host;
   }
 
-  public void setPeerList(HashMap<String, Peer> neighborMap) {
-    this.neighborMap = neighborMap;
+  public void initServerListener() throws IOException {
+    this.serverListener = new ServerSocket(host.getPort());
   }
 
-  public void setSystemParam(List<String> SystemInfoList) {
+  public void initNeighborMap(HashMap<String, Peer> neighborMap) {
+    this.neighborMap = neighborMap;
+  }
+  
+  public void initDebugMode(boolean debug) {
+    this.isDebugMode = debug;
+  }
+
+  public void initSystemParam(List<String> SystemInfoList) {
     try {
       this.preferN = Integer.parseInt(SystemInfoList.get(0));
       this.unChokingInr = Integer.parseInt(SystemInfoList.get(1));
@@ -109,10 +156,65 @@ public final class SystemInfo {
     }
   }
 
+  public void initChokingMap() {
+    for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
+      if(!n.getValue().getHasFile()) {
+        this.chokingMap.put(n.getKey(), n.getValue());
+      }
+    }
+  }
+
+  /**
+   * Receive piece, add to new obtain blocks list
+   * @param blockIdx
+   */
+  public void addNewObtainBlocks(int blockIdx) {
+    this.newObtainBlocks.add(blockIdx);
+  }
+
+  public void setIsNeighborsComplete() {
+    this.isNeighborsComplete = true;
+  }
+
+  /**
+   * Assign optimistically unchoked peer
+   * @param selected
+   */
+  public void setOptUnchokingPeer(Peer selected) {
+    this.optUnchokingPeer = selected;
+  }
+
+  public boolean getIsDebugMode() {
+    return this.isDebugMode;
+  }
+
+  /**
+  * Get system peer and communication objects or params
+  */
   public Peer getHostPeer() {
     return this.host;
   }
-  
+
+  public ServerSocket getServerListener() {
+    return this.serverListener;
+  }
+
+  public boolean getIsNeighborsComplete() {
+    return this.isNeighborsComplete;
+  }
+
+  public Timer getIsSystemCompleteTimer() {
+    return this.isSystemCompleteTimer;
+  }
+
+  public Timer getPreferSelectTimer() {
+    return this.PreferSelectTimer;
+  }
+
+  public Timer getOptSelectTimer() {
+    return this.OptSelectTimer;
+  }
+
   public HashMap<String, Peer> getNeighborMap() {
     this.lock.lock();
 		try{
@@ -133,10 +235,6 @@ public final class SystemInfo {
 		}
   }
 
-  public void clearInterestMap() {
-    this.interestMap.clear();
-  }
-
   public HashMap<String, Peer> getUnChokingMap() {
     this.lock.lock();
 		try{
@@ -145,10 +243,6 @@ public final class SystemInfo {
 		finally{
 			this.lock.unlock();
 		}
-  }
-
-  public void clearUnChokingMap() {
-    this.unChokingMap.clear();
   }
 
   public HashMap<String, Peer> getChokingMap() {
@@ -160,33 +254,54 @@ public final class SystemInfo {
 			this.lock.unlock();
 		}
   }
-
-  public void clearChokingMap() {
-    this.chokingMap.clear();
-  }
   
-  public HashMap<String, Socket> getConnectionMap() {
-    return this.connectionMap;
+  public Peer getOptUnchokingPeer() {
+    return this.optUnchokingPeer;
   }
 
-  public HashMap<String, ActualMsg> getActMsgMap() {
-    return this.actMsgMap;
+  public ConcurrentHashMap<String, Socket> getServerConnMap() {
+    return this.serverConnMap;
   }
 
-  public void printNeighborsInfo() {
-    if(this.neighborMap != null && this.neighborMap.size() != 0) {
-      String infos = String.format("[%s] Print out neighbor map \n", this.host.getId());
-      for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
-        infos += String.format(
-          "(%s) isInterested: (%s) isChoking (%s) isDownloading (%s)\n",
-          n.getKey(),
-          n.getValue().getIsInterested(),
-          n.getValue().getIsChoking(),
-          n.getValue().getIsDownloading()
-        );
-        System.out.println(infos);
-      }
-    }
+  public ConcurrentHashMap<String, ObjectOutputStream> getServerOpStream() {
+    return this.serverOpStream;
+  }
+
+  public ConcurrentHashMap<String, ActualMsg> getServerActMsgMap() {
+    return this.serverActMsgMap;
+  }
+
+  public ConcurrentHashMap<String, Socket> getClientConnMap() {
+    return this.clientConnMap;
+  }
+
+  public ConcurrentHashMap<String, ObjectOutputStream> getClientOpStream() {
+    return this.clientOpStream;
+  }
+
+  public ConcurrentHashMap<String, ActualMsg> getClientActMsgMap() {
+    return this.clientActMsgMap;
+  }
+
+  public ConcurrentHashMap<String, Boolean> getIsClientCompleteMap() {
+    return this.isClientCompleteMap;
+  }
+  /**
+   * 1. Copy newObtainBlocks with lock.
+   * 2. Clear newObtainBlocks
+   * @return copyList from newObtainBlocks
+   */
+  public List<Integer> getNewObtainBlocksCopy() {
+    this.lock.lock();
+		try{
+      List<Integer> copyList = new ArrayList<Integer>();
+      copyList.addAll(this.newObtainBlocks);
+      this.newObtainBlocks.clear();
+      return copyList;
+		}
+		finally{
+			this.lock.unlock();
+		}
   }
 
   /**
@@ -220,7 +335,30 @@ public final class SystemInfo {
     return SystemInfo.retryLimit;
   }
 
-  public int getRetryInterval() {
+  public long getRetryInterval() {
     return SystemInfo.retryInr;
+  }
+
+  public long getClientRequestPieceInr() {
+    return SystemInfo.clientRequestPieceInr;
+  }
+  
+  /**
+   * Test Function
+   */
+  public void printNeighborsInfo() {
+    if(this.neighborMap != null && this.neighborMap.size() != 0) {
+      String infos = String.format("[%s] Print out neighbor map \n", this.host.getId());
+      for(Entry<String, Peer> n: this.neighborMap.entrySet()) {
+        infos += String.format(
+          "(%s) isInterested: (%s) isChoking (%s) isDownloading (%s)\n",
+          n.getKey(),
+          n.getValue().getIsInterested(),
+          n.getValue().getIsChoking(),
+          n.getValue().getIsDownloading()
+        );
+        System.out.println(infos);
+      }
+    }
   }
 }

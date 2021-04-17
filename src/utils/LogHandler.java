@@ -6,8 +6,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
-
-import javax.sound.midi.Receiver;
+import java.util.stream.Collectors;
 
 import java.util.Date;
 import java.util.logging.FileHandler;
@@ -19,9 +18,10 @@ import peer.SystemInfo;
 
 public final class LogHandler {
 
+  private FileHandler erroLogFH = null;
   private FileHandler logFH = null; // Project descriptions log - info level
   private FileHandler debugLogFH = null; // Debug logs
-  private String logDir = "../log";
+  private String logDir = System.getProperty("user.dir") + "/log";
 
   private static Logger logger = null;
   private static SystemInfo sysInfo = SystemInfo.getSingletonObj();
@@ -61,6 +61,7 @@ public final class LogHandler {
     * Set file name with date
     */
     String dateString = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+    String errorLogFN = String.format("error_log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
     String logFN = String.format("log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
     String debugLogFN = String.format("debug_log_peer_[%s]_[%s].log", sysInfo.getHostPeer().getId(), dateString);
 
@@ -71,10 +72,15 @@ public final class LogHandler {
       this.logFH = new FileHandler(this.logDir + "/" + logFN, true);
       this.logFH.setFormatter(new SimpleFormatter());
       this.logFH.setFilter(new logFilter(Level.INFO));
+
+      this.erroLogFH = new FileHandler(this.logDir + "/" + errorLogFN, true);
+      this.erroLogFH.setFormatter(new SimpleFormatter());
+      this.erroLogFH.setFilter(new logFilter(Level.SEVERE));
+
     } catch (SecurityException e) {  
       e.printStackTrace();
     } catch (IOException e) {  
-      e.printStackTrace();  
+      e.printStackTrace();
     }
   }
 
@@ -83,9 +89,13 @@ public final class LogHandler {
      * Create logs, and adding log handlers
     */
     if(logger == null) {
+      if(sysInfo.getIsDebugMode()) {
+        this.logDir = "../demo/log/";
+      }
       logger = Logger.getLogger(LogHandler.class.getName());
       logger.setLevel(Level.FINE);
       createLogFiles();
+      logger.addHandler(this.erroLogFH);
       logger.addHandler(this.logFH);
       logger.addHandler(this.debugLogFH);
     }
@@ -185,41 +195,46 @@ public final class LogHandler {
   
   // 2. change of preferred neighbors
   public void logChangePrefersPeers() {
-
+    // TODO
+    String preferredString = sysInfo.getUnChokingMap().entrySet().stream().map(p->p.getKey()).collect(Collectors.joining(","));
+    String msg = String.format("Peer [%s] has the preferred neighbors [%s]", sysInfo.getHostPeer().getId(), preferredString);
+    logger.info(msg);
   }
 
   // 3. change of optimistically unchoked neighbor
-  public void logChangeUnchokedPeer() {
-
+  public void logChangeOptUnchokedPeer() {
+    // TODO
+    String msg = String.format("Peer [%s] has the optimistically unchoked neighbor [%s]", sysInfo.getHostPeer().getId(), sysInfo.getOptUnchokingPeer().getId());
+    logger.info(msg);
   }
   
   // 4. unchoking
   public void logUnchoking(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘unchoke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] is unchoked by [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
   // 5. choking
   public void logChoking(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘choke’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] is choked by [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
-  // 6. receiving ‘have’ message
+  // 6. receiving 'have' message
   public void logReceiveHaveMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘have’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] received the 'have' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
-  // 7. receiving ‘interested’ message
+  // 7. receiving 'interested' message
   public void logReceiveInterestMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] received the 'interested' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
-  // 8. receiving ‘not interested’ message
+  // 8. receiving 'not interested' message
   public void logReceiveNotInterestMsg(Peer sender) {
-    String msg = String.format("Peer [%s] received the ‘not interested’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] received the 'not interested' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
@@ -237,7 +252,7 @@ public final class LogHandler {
 
   // 10. completion of download
   public void logCompleteFile() {
-    String msg = String.format("Peer [%s] has downloaded the complete file.  ", sysInfo.getHostPeer().getId());
+    String msg = String.format("Peer [%s] has downloaded the complete file.", sysInfo.getHostPeer().getId());
     logger.info(msg);
   }
   
@@ -254,7 +269,7 @@ public final class LogHandler {
   }
 
   public void logReceiveHandShakeMsg(String senderId) {
-    String msg = String.format("Peer [%s] received the ‘handshake’ message from [%s]", sysInfo.getHostPeer().getId(), senderId);
+    String msg = String.format("Peer [%s] received the 'handshake' message from [%s]", sysInfo.getHostPeer().getId(), senderId);
     logger.info(msg);
   }
 
@@ -262,18 +277,43 @@ public final class LogHandler {
     logger.info(String.format("Peer [%s] (server) sending bitfield message to peer [%s]", sysInfo.getHostPeer().getId(), recv.getId()));
   }
 
-  public void logBitFieldMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (client) received the ‘bitfield’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+  public void logReceiveBitFieldMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (client) received the 'bitfield' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
   public void logReceiveRequestMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (server) received the ‘request’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] (server) received the 'request' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
     logger.info(msg);
   }
 
   public void logReceivePieceMsg(Peer sender) {
-    String msg = String.format("Peer [%s] (client) received the ‘piece’ message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    String msg = String.format("Peer [%s] (client) received the 'piece' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logSendCompleteMsg(String recvId) {
+    String msg = String.format("Peer [%s] (client) sending 'complete' message to [%s]", sysInfo.getHostPeer().getId(), recvId);
+    logger.fine(msg);
+  }
+
+  public void logReceiveCompleteMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (server) received the 'complete' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logReceiveBackCompleteMsg(Peer sender) {
+    String msg = String.format("Peer [%s] (client) received the return 'complete' message from [%s]", sysInfo.getHostPeer().getId(), sender.getId());
+    logger.info(msg);
+  }
+
+  public void logSystemReadyShutDown(int countDown) {
+    String msg = String.format("Peer [%s] is about to close, the countdown is %s", sysInfo.getHostPeer().getId(), countDown);
+    logger.info(msg);
+  }
+
+  public void logSystemIsComplete() {
+    String msg = String.format("Peer [%s] closed, system is completed", sysInfo.getHostPeer().getId());
     logger.info(msg);
   }
 }
