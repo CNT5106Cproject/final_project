@@ -2,7 +2,7 @@ package peer;
 
 import java.io.*;
 
-public class Handshake
+public class HandShake
 {
 	
 	// Attributes
@@ -24,7 +24,7 @@ public class Handshake
 	 * 
 	 * 
 	 */
-	public Handshake(String Header, String PeerId) {
+	public HandShake(String Header, String PeerId) {
 
 		try {
 			this.messageHeader = Header;
@@ -44,7 +44,7 @@ public class Handshake
 
 	}
 
-	private Handshake(){
+	private HandShake(){
 		
 	}
 
@@ -136,9 +136,9 @@ public class Handshake
 	}
 	
 	// Decodes the byte array HandshakeMessage and loads to the object HandshakeMessage
-	public static Handshake decodeMessage(byte[] receivedMessage) throws Exception {
+	public static HandShake decodeMessage(byte[] receivedMessage) throws Exception {
 
-		Handshake handshakeMessage = null;
+		HandShake handshakeMessage = null;
 		byte[] msgHeader = null;
 		byte[] msgPeerID = null;
 
@@ -148,7 +148,7 @@ public class Handshake
 				throw new Exception("Unmatched byte array length");
 
 			// VAR initialization
-			handshakeMessage = new Handshake();
+			handshakeMessage = new HandShake();
 			msgHeader = new byte[HANDSHAKE_HEADER_LENGTH];
 			msgPeerID = new byte[HANDSHAKE_PEERID_LENGTH];
 
@@ -182,7 +182,7 @@ public class Handshake
 	}
 
 	// Encodes a given message in the format HandshakeMessage 
-	public static byte[] encodeMessage(Handshake handshakeMessage) {
+	public static byte[] encodeMessage(HandShake handshakeMessage) {
 
 		byte[] sendMessage = new byte[MSG_LENGTH];
 

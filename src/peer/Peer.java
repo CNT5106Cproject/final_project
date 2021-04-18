@@ -4,7 +4,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import utils.CustomExceptions;
 import utils.ErrorCode;
-import utils.LogHandler;
 import utils.Tools;
 
 public class Peer {
@@ -24,6 +23,10 @@ public class Peer {
   private boolean isChoking = false;
   private boolean isDownLoading = false;
   private double downloadRate = 0.0;
+  /**
+   * Using to check if every other node is finish
+   */
+  private boolean isComplete = false;
   
   public Peer() {
     
@@ -50,26 +53,6 @@ public class Peer {
 			);
 		}
 	}
-
-  /**
-   * Set up only peerId, use in Server thread
-   * @param peerId
-   */
-  public Peer(String peerId) throws CustomExceptions{
-    try {
-      this.peerId = peerId;
-      this.hostName = null;
-      this.port = -1;
-      this.hasFile = false;
-    }
-    catch (Exception e) {
-      String trace = Tools.getStackTrace(e);
-      throw new CustomExceptions(
-        ErrorCode.failParsePeerInfo, 
-				String.format("failed to parse peer id, ex:" + trace)
-			);
-		}
-	}
   
   public String getId() {
 		return this.peerId;
@@ -85,6 +68,10 @@ public class Peer {
 
   public boolean getHasFile() {
     return this.hasFile;
+  }
+
+  public boolean getIsComplete() {
+    return this.isComplete;
   }
 
   /**
@@ -150,4 +137,12 @@ public class Peer {
       this.lock.unlock();
     }
 	}
+
+  public void setIsComplete() {
+    this.isComplete = true;
+  }
+
+  public void setUnComplete() {
+    this.isComplete = false;
+  }
 }
