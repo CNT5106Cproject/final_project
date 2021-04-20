@@ -17,9 +17,11 @@ public class HandShake
 	private static final int HANDSHAKE_PEERID_LENGTH = 4;
 	private static final String CHARSET_NAME = "UTF8";
 	public static final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
+
 	private byte[] msg_header = new byte[HANDSHAKE_HEADER_LENGTH];
 	private byte[] peerID = new byte[HANDSHAKE_PEERID_LENGTH];
 	private byte[] zeroBits = new byte[HANDSHAKE_ZEROBITS_LENGTH];
+
 	private String messageHeader;
 	private String messagePeerID;
 
@@ -269,7 +271,7 @@ public class HandShake
 		}
 		catch (IOException e)
 		{
-			 //peerProcess.showLog(this.ownPeerId + "ReceiveHandshake : " + e.getMessage());
+			// peerProcess.showLog(this.ownPeerId + ” ReceiveHandshake : ” + e.getMessage());
 		}
 		return null;
 	}

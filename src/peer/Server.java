@@ -528,16 +528,15 @@ public class Server extends Thread{
 				inStream = new ObjectInputStream(connection.getInputStream());
 
 				if(this.handShake == null) {	
-					this.handShake = new HandShake();
+					this.handShake = new HandShake(HandShake.HANDSHAKE_HEADER, this.server.getId());
 					String getClientId = null;
 					while(true) {
 						// waiting for hand shake message
-						getClientId = this.handShake.ReceiveHandShake(inStream);
-						if(this.handShake.isSuccess() && getClientId != null) {
+						getClientId = HandShake.ReceiveHandshake(connection.getInputStream());
+						if(getClientId != null) {
 							this.client = sysInfo.getNeighborMap().get(getClientId);
 							// set clientID
-							this.handShake.setTargetPeerID(getClientId);
-							this.handShake.SendHandShake(opStream);
+							HandShake.SendHandshake(connection.getOutputStream(), HandShake.encodeMessage(this.handShake));
 							logging.logSendHandShakeMsg(getClientId, "server");
 							logging.logHandShakeSuccess(this.server, this.client);
 							break;
