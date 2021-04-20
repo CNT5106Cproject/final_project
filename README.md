@@ -66,7 +66,9 @@ In this mode, all peers will build locally with different port.
 
    It should not show any output which means the file are all the same.
 
-## How to manually run on remote server?
+
+
+## How to run on remote server?
 
 When you login into the server on csie, you could use these command to start the peer manually.
 
@@ -75,7 +77,7 @@ Be aware that the configurations to remain in
 - **~/final_project/{target_file}/**
 - **{target_file} = demo** in default, change it if necessary.
 
-1. compile - use script or javac directly
+1. Compile the project - use script or javac directly
     ```
     sh ~/final_project/compileProcess.sh
     ```
@@ -84,12 +86,19 @@ Be aware that the configurations to remain in
     javac -Xlint -d [target_file] src/PeerProcess.java src/peer/* src/utils/*
     ```
 
-2. start process in the directory of {target _file}
+2. Compile remote deployer  
    ```
-   java PeerProcess 1001
+   sh ~/final_project/demo/compileDeployer.sh
    ```
 
-3. kill process on ubuntu
+3. Start the deployment
+   
+   ```
+   java ~/final_project/demo/StartRemotePeer
+   ```
+   
+4. Kill process on ubuntu if needed
+
    ```
    ps aux | grep java | grep PeerProces | awk '{print $2}' | xargs /bin/kill
    ```
