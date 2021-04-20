@@ -181,7 +181,7 @@ public class HandShake
 
 		} catch(CustomExceptions e) {
 			String trace = Tools.getStackTrace(e);
-			logging.writeLog(trace);
+			logging.writeLog("severe", trace);
 			handshakeMessage = null;
 		}
 		return handshakeMessage;
@@ -269,9 +269,9 @@ public class HandShake
 		}
 		catch (IOException e)
 		{
-			 //peerProcess.showLog(this.ownPeerId + "ReceiveHandshake : " + e.getMessage());
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog("severe", trace);
 		}
 		return null;
 	}
 }
-
