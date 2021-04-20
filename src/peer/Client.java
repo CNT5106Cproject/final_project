@@ -335,7 +335,6 @@ public class Client extends Peer implements Runnable {
 				logging.writeLog("unable continue requesting, peer has been choked");
 				return false;
 			}
-			Tools.timeSleep(200);
 			requestingPiece(this.targetHostPeer);
 		}
 		return false;
