@@ -83,7 +83,7 @@ public class Server extends Thread{
 	}
 
 	public static class IsSystemComplete extends TimerTask {
-		private int countDown = 10;
+		private int countDown = 5;
 		public void run() {
 			logging.writeLog("IsSystemComplete - start checking system isComplete?");
 			try {
