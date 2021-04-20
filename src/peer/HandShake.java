@@ -2,6 +2,10 @@ package peer;
 
 import java.io.*;
 
+import utils.CustomExceptions;
+import utils.ErrorCode;
+import utils.LogHandler;
+import utils.Tools;
 public class HandShake
 {
 	
@@ -12,13 +16,14 @@ public class HandShake
 	private static final int HANDSHAKE_ZEROBITS_LENGTH = 10;
 	private static final int HANDSHAKE_PEERID_LENGTH = 4;
 	private static final String CHARSET_NAME = "UTF8";
-	private static final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
+	public static final String HANDSHAKE_HEADER = "P2PFILESHARINGPROJ";
 	private int[] msg_header = new int[HANDSHAKE_HEADER_LENGTH];
 	private int[] peerID = new int[HANDSHAKE_PEERID_LENGTH];
 	private int[] zeroBits = new int[HANDSHAKE_ZEROBITS_LENGTH];
 	private String messageHeader;
 	private String messagePeerID;
 
+	private static LogHandler logging = new LogHandler();
 
 	/* Class constructor
 	 * 
@@ -136,7 +141,7 @@ public class HandShake
 	}
 	
 	// Decodes the byte array HandshakeMessage and loads to the object HandshakeMessage
-	public static HandShake decodeMessage(byte[] receivedMessage) throws Exception {
+	public static HandShake decodeMessage(byte[] receivedMessage) throws CustomExceptions {
 
 		HandShake handshakeMessage = null;
 		byte[] msgHeader = null;
@@ -145,7 +150,7 @@ public class HandShake
 		try {
 			// Initial check
 			if (receivedMessage.length != MSG_LENGTH)
-				throw new Exception("Unmatched byte array length");
+				throw new CustomExceptions(ErrorCode.failHandshake, "Unmatched byte array length");
 
 			// VAR initialization
 			handshakeMessage = new HandShake();
@@ -166,7 +171,7 @@ public class HandShake
 			for (int i = 0; i < msgHeader.length; i++) {
 				byte[] handshake_header_byte = HANDSHAKE_HEADER.getBytes();
 				if (msgHeader[i] != handshake_header_byte[i]) {
-					throw new Exception("Invalid Header");
+					throw new CustomExceptions(ErrorCode.invalidHandshakeHeader, "Header Invalid");
 				}
 			}
 
@@ -174,8 +179,9 @@ public class HandShake
 			handshakeMessage.setHeader(msgHeader);
 			handshakeMessage.setPeerID(msgPeerID);
 
-		} catch (Exception e) {
-			//PeerProcess.showLog(e.toString());
+		} catch(CustomExceptions e) {
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog(trace);
 			handshakeMessage = null;
 		}
 		return handshakeMessage;
@@ -189,11 +195,11 @@ public class HandShake
 		try {
 			// Encode header
 			if (handshakeMessage.getHeader() == null) {
-				throw new Exception("Header Invalid");
+				throw new CustomExceptions(ErrorCode.invalidHandshakeHeader, "Header Invalid");
 			}
 			if (handshakeMessage.getHeader().length > HANDSHAKE_HEADER_LENGTH|| handshakeMessage.getHeader().length == 0)
 			{
-				throw new Exception("Header Invalid");
+				throw new CustomExceptions(ErrorCode.invalidHandshakeHeader, "Header Invalid");
 			} else {
 				System.arraycopy(handshakeMessage.getHeader(), 0, sendMessage,
 						0, handshakeMessage.getHeader().length);
@@ -201,11 +207,11 @@ public class HandShake
 
 			// Encode zero bits
 			if (handshakeMessage.getZeroBits() == null) {
-				throw new Exception("Invalid zero bits field.");
+				throw new CustomExceptions(ErrorCode.failHandshake, "Invalid zero bits field.");
 			} 
 			if (handshakeMessage.getZeroBits().length > HANDSHAKE_ZEROBITS_LENGTH
 					|| handshakeMessage.getZeroBits().length == 0) {
-				throw new Exception("Invalid zero bits field.");
+				throw new CustomExceptions(ErrorCode.failHandshake, "Invalid zero bits field.");
 			} else {
 				System.arraycopy(handshakeMessage.getZeroBits(), 0,
 						sendMessage, HANDSHAKE_HEADER_LENGTH,
@@ -215,12 +221,12 @@ public class HandShake
 			// Encode peer id
 			if (handshakeMessage.getPeerID() == null) 
 			{
-				throw new Exception("Invalid peerID");
+				throw new CustomExceptions(ErrorCode.failHandshake, "Invalid zero bits field.");
 			} 
 			else if (handshakeMessage.getPeerID().length > HANDSHAKE_PEERID_LENGTH
 					|| handshakeMessage.getPeerID().length == 0) 
 			{
-				throw new Exception("Invalid peerID");
+				throw new CustomExceptions(ErrorCode.failHandshake, "Invalid zero bits field.");
 			} 
 			else 
 			{
@@ -230,12 +236,41 @@ public class HandShake
 			}
 
 		} 
-		catch (Exception e) 
-		{
-			//PeerProcess.showLog(e.toString());
+		catch(CustomExceptions e) {
+			String trace = Tools.getStackTrace(e);
+			logging.writeLog(trace);
 			sendMessage = null;
 		}
 
 		return sendMessage;
+	}
+
+	public static boolean SendHandshake(OutputStream opStream, byte[] handshakeMsg) throws IOException
+	{
+		try
+		{
+			opStream.write(handshakeMsg);
+		}
+		catch (IOException e)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	public static String ReceiveHandshake(InputStream inputStream) throws IOException, CustomExceptions
+	{
+		byte[] receivedHandshakeByte = new byte[32];
+		try
+		{
+			inputStream.read(receivedHandshakeByte);
+			HandShake receiveMsg = decodeMessage(receivedHandshakeByte);
+			return receiveMsg.getPeerIDString();
+		}
+		catch (IOException e)
+		{
+			// peerProcess.showLog(this.ownPeerId + ” ReceiveHandshake : ” + e.getMessage());
+		}
+		return null;
 	}
 }
