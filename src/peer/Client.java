@@ -83,15 +83,15 @@ public class Client extends Peer implements Runnable {
 				 * - Validate handShake response
 				*/
 				if(this.handShake == null) {
-					this.handShake = new HandShake(targetHostPeer);
+					this.handShake = new HandShake(HandShake.HANDSHAKE_HEADER, this.targetHostPeer.getId());
 						
 					while(true) {
-						this.handShake.SendHandShake(this.opStream);
+						HandShake.SendHandshake(requestSocket.getOutputStream(), HandShake.encodeMessage(this.handShake));
 						
 						logging.logSendHandShakeMsg(this.targetHostPeer.getId(), "client");
-						this.handShake.ReceiveHandShake(inStream);
+						String serverPeerId = HandShake.ReceiveHandshake(inStream);
 						
-						if(this.handShake.isSuccess()) {
+						if(serverPeerId != null) {
 							logging.logHandShakeSuccess(this.clientPeer, this.targetHostPeer);
 							break;
 						}
