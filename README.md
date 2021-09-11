@@ -135,7 +135,7 @@ The logs are seperate into 3 files for each node.
 1. PeerProcess (YiMing)
 2. Server (YiMing)
 3. Client (YiMing)
-4. HandShakeMsg (Mayank)
+4. HandShakeMsg (YiMing)
 5. ActualMsg (Jim)
 6. FileManager (Jim)
 7. LogHandler (YiMing)
@@ -240,30 +240,20 @@ FileManager is a singleton,  new it as the class's default variables. Then you a
 | Function Names | input |  return | description  |
 | ------------- | ------------- | ----------- | ------- |
 | logStartConn  | Peer client, Peer targetHost | None | log start connection |
-| logChangePrefersPeers  | | None | log change of preferred neighbors |
-| logChangeUnchokedPeer  | | None | change of unchoke neighbors |
-| logUnchoking  | | None | log unchoke targe peer |
-| logChoking    | | None | log choke target peer  |
-| logSendHaveMsg  | | None | log server send have msg |
-| logSendInterestMsg  | | None | log cleint send interest msg |
-| logSendNotInterestMsg  | | None | log cleint send not interest msg |
-| logDownload  | | None | log download block |
-| logCompleteFile  | | None | log complete downloading the file |
-| logCloseConn  | | None | log close connection |
-| logSendHandShakeMsg | | None | log send hand shake msg |
+| logChangePrefersPeers  | None  | None | log change of preferred neighbors |
+| logChangeUnchokedPeer  | None | None | change of unchoke neighbors |
+| logUnchoking  | Peer sender | None | log unchoke targe peer |
+| logChoking    | Peer sender | None | log choke target peer  |
+| logReceiveHaveMsg  | Peer sender | None | log server send have msg |
+| logReceiveInterestMsg  | Peer sender | None | log cleint send interest msg |
+| logReceiveNotInterestMsg  | Peer sender | None | log cleint send not interest msg |
+| logDownload  | Peer sender, int blockIdx, int numBlocks | None | log download block |
+| logCompleteFile  | None | None | log complete downloading the file |
+| logCloseConn  | Peer targetPeer | None | log close connection |
+| logSendHandShakeMsg | String targetPeerID, String threadType | None | log send hand shake msg |
 
 #### Error log functions
 ---
 | Function Names | input |  return | description  |
 | ------------- | ------------- | ----------- | ------- |
 | logConnError  | (Peer client, Peer targetHost) | None | Connection Error |
-
-#### Other log functions
----
-| Function Names | input |  return | description  |
-| ------------- | ------------- | ----------- | ------- |
-| writeLog      | (String msg) | None | Write log to log file handler |
-| writeLog      | (String msg, Level lvl) | None | Write log to log file handler with log level |
-| logEstablishPeer | | | |
-| logStartServer | | | |
-| logStartClient | | | |
