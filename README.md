@@ -135,7 +135,7 @@ The logs are seperate into 3 files for each node.
 1. PeerProcess (YiMing)
 2. Server (YiMing)
 3. Client (YiMing)
-4. HandShakeMsg (Mayank)
+4. HandShakeMsg (YiMing)
 5. ActualMsg (Jim)
 6. FileManager (Jim)
 7. LogHandler (YiMing)
