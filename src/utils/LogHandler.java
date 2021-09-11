@@ -195,7 +195,6 @@ public final class LogHandler {
   
   // 2. change of preferred neighbors
   public void logChangePrefersPeers() {
-    // TODO
     String preferredString = sysInfo.getUnChokingMap().entrySet().stream().map(p->p.getKey()).collect(Collectors.joining(","));
     String msg = String.format("Peer [%s] has the preferred neighbors [%s]", sysInfo.getHostPeer().getId(), preferredString);
     logger.info(msg);
@@ -203,7 +202,6 @@ public final class LogHandler {
 
   // 3. change of optimistically unchoked neighbor
   public void logChangeOptUnchokedPeer() {
-    // TODO
     String msg = String.format("Peer [%s] has the optimistically unchoked neighbor [%s]", sysInfo.getHostPeer().getId(), sysInfo.getOptUnchokingPeer().getId());
     logger.info(msg);
   }

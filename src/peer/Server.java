@@ -377,7 +377,6 @@ public class Server extends Thread{
 		 * Assign Random download rate to nodes
 		 */
 		private void testRandomDownLoadRate() {	
-			// TODO set a real downloading rate
 			for(Entry<String, Peer> n: interestMap.entrySet()) {
 				n.getValue().setDownloadRate(R.nextDouble());
 			}

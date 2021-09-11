@@ -51,7 +51,6 @@ public class StartRemotePeers {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		try {
 			StartRemotePeers myStart = new StartRemotePeers();
 			myStart.getConfiguration();

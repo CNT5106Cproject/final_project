@@ -138,12 +138,10 @@ public class HandShake implements Serializable {
 				senderId
 			));
 		
-		/**
-		 * TODO 
+		/** 
 		 * check header, the receiveHeader should not be set static variable in Response 
 		 * it should be deserialize from input stream
 		 */
-		/** this code is incorrect */
 		if(receiveHeader.equals("P2PFILESHARINGPROJ")) {
 			logging.writeLog(
 				String.format(
